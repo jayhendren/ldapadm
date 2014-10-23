@@ -1,10 +1,10 @@
 import unittest
-from src import foo
+import src.foo
 
 class TestFooClass(unittest.TestCase):
 
     def setUp(self):
-        self.f = foo.Foo()
+        self.f = src.foo.Foo()
     
     def test_foo(self):
         self.assertEqual(self.f.foo(), "foo")
