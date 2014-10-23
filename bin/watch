@@ -1,0 +1,54 @@
+#!/usr/bin/env python2
+
+# based on simple example taken from:
+# http://pythonhosted.org/watchdog/quickstart.html#a-simple-example
+
+import os
+import sys
+import yaml
+import time
+import logging
+import subprocess
+from datetime import datetime
+from watchdog.observers import Observer
+from watchdog.events import PatternMatchingEventHandler
+
+proj_root_dir = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
+
+conf_file_name = os.path.join(proj_root_dir, 'conf/watch.conf.yaml')
+conf_f = open(conf_file_name)
+conf = yaml.load(conf_f.read())
+conf_f.close()
+
+cooldown_period = conf['cooldown_period']
+paths           = conf['paths']
+patterns        = conf['patterns']
+test_cmd        = conf['test_cmd']
+
+last_run = None
+
+class TestRunner(PatternMatchingEventHandler):
+
+    def on_modified(self, event):
+        global last_run, cooldown_period, test_cmd, proj_root_dir
+        now = datetime.now()
+        if not last_run or (now - last_run).total_seconds() > cooldown_period:
+            print '{} {}: {}'.format(now.strftime("%a %b %d %H:%M:%S %Y"),
+                event.src_path, event.event_type)
+            os.chdir(proj_root_dir)
+            subprocess.call(test_cmd.split())
+            last_run = now
+
+if __name__ == "__main__":
+    event_handler = TestRunner(patterns=patterns)
+    observer = Observer()
+    for p in paths:
+        observer.schedule(event_handler, os.path.join(proj_root_dir, p),
+            recursive=True)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()

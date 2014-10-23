@@ -1,0 +1,4 @@
+cooldown_period : .5
+paths           : ["src", "tests"]
+patterns        : ["*.py"]
+test_cmd        : "python2 -m unittest discover"
