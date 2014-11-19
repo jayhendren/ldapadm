@@ -16,6 +16,12 @@ class LDAPObjectManager():
     def _stripReferences(self, ldif):
         return filter(lambda x: x[0] is not None, ldif)
 
+    def get_option(self, option):
+        return self._ldo.get_option(option)
+
+    def set_option(self, option, value):
+        return self._ldo.set_option(option, value)
+
     def gets(self, sbase, sfilter):
         ldif = self._ldo.search_ext_s(sbase, ldap.SCOPE_SUBTREE, sfilter)
         result = self._stripReferences(ldif)
