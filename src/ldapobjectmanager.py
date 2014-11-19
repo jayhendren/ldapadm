@@ -1,12 +1,17 @@
 import ldap
+import ldap.sasl
 
 class auth():
     kerb, simple, noauth = range(3)
 
 class LDAPObjectManager():
 
-    def __init__(self, uri, authtype, **kwargs):
+    def __init__(self, uri, authtype, user=None, password=None, **kwargs):
         self._ldo = ldap.initialize(uri)
+        if authtype == auth.simple:
+            self._ldo.simple_bind_s(user, password)
+        elif authtype == auth.kerb:
+            self._ldo.sasl_interactive_bind_s('', ldap.sasl.gssapi())
 
     def _stripReferences(self, ldif):
         return filter(lambda x: x[0] is not None, ldif)

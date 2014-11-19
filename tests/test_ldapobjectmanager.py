@@ -7,6 +7,37 @@ class TestLOMGetMethods(unittest.TestCase):
 
     def setUp(self):
         pass
+
+    def testAuth(self, mock_ldap):
+        uri = 'ldaps://foo.bar:636'
+
+        # no auth
+        ldo = mock_ldap.ldapobject.LDAPObject(uri)
+        mock_ldap.initialize.return_value = ldo
+        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
+            src.ldapobjectmanager.auth.noauth)
+        self.assertEqual(ldo.simple_bind_s.call_args_list, [])
+        self.assertEqual(ldo.sasl_interactive_bind_s.call_args_list, [])
+
+        # simple auth
+        ldo = mock_ldap.ldapobject.LDAPObject(uri)
+        mock_ldap.initialize.return_value = ldo
+        user = 'foo'
+        password = 'bar'
+        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
+            src.ldapobjectmanager.auth.simple, user=user, password=password)
+        self.assertEqual(ldo.simple_bind_s.call_args_list,
+            [((user, password),)])
+
+        # kerb auth
+        ldo = mock_ldap.ldapobject.LDAPObject(uri)
+        mock_ldap.initialize.return_value = ldo
+        sasl = mock.MagicMock()
+        mock_ldap.sasl.gssapi.return_value = sasl
+        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
+            src.ldapobjectmanager.auth.kerb)
+        self.assertEqual(ldo.sasl_interactive_bind_s.call_args_list,
+            [(('', sasl),)])
     
     def testGets(self, mock_ldap):
         uri = 'ldaps://foo.bar:636'
