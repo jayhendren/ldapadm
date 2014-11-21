@@ -8,6 +8,8 @@ class LDAPObjectManager():
 
     def __init__(self, uri, authtype, user=None, password=None, **kwargs):
         self._ldo = ldap.initialize(uri)
+        for key, value in kwargs.items():
+            self._ldo.set_option(getattr(ldap, key), value)
         if authtype == auth.simple:
             self._ldo.simple_bind_s(user, password)
         elif authtype == auth.kerb:
@@ -16,18 +18,12 @@ class LDAPObjectManager():
     def _stripReferences(self, ldif):
         return filter(lambda x: x[0] is not None, ldif)
 
-    def get_option(self, option):
-        return self._ldo.get_option(option)
-
-    def set_option(self, option, value):
-        return self._ldo.set_option(option, value)
-
     def gets(self, sbase, sfilter):
         ldif = self._ldo.search_ext_s(sbase, ldap.SCOPE_SUBTREE, sfilter)
         result = self._stripReferences(ldif)
         if not result:
             raise RuntimeError("""No results found for single-object query:
-base %s 
+base: %s 
 filter: %s""" %(sbase, sfilter))
         if len(result) > 1:
             raise RuntimeError("""Too many results found for single-object \

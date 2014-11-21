@@ -38,7 +38,24 @@ class TestLOMGetMethods(unittest.TestCase):
             src.ldapobjectmanager.auth.kerb)
         self.assertEqual(ldo.sasl_interactive_bind_s.call_args_list,
             [(('', sasl),)])
-    
+
+    def testOptions(self, mock_ldap):
+        uri = 'ldaps://foo.bar:636'
+        def addOption(**kwargs):
+            ldo = mock_ldap.ldapobject.LDAPObject(uri)
+            mock_ldap.initialize.return_value = ldo
+            for key, value in kwargs.items():
+                if not hasattr(mock_ldap, key):
+                    with self.assertRaises(AttributeError):
+                        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
+                            src.ldapobjectmanager.auth.noauth, **{key:value})
+                else:
+                    lom = src.ldapobjectmanager.LDAPObjectManager(uri,
+                        src.ldapobjectmanager.auth.noauth, **{key:value})
+                    self.assertEqual(ldo.set_option.call_args, 
+                        ((getattr(mock_ldap, key), value),))
+        addOption(OPT_X_TLS=1, OPT_BOGUS=1, OPT_URI="ldaps://baz.bar")
+
     def testGets(self, mock_ldap):
         uri = 'ldaps://foo.bar:636'
         ldo = mock_ldap.ldapobject.LDAPObject(uri)
