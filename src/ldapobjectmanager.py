@@ -34,3 +34,8 @@ base: %s
 filter: %s
 results: %s""" %(sbase, sfilter, [r[0] for r in result]))
         return result[0]
+
+    def getm(self, sbase, sfilter):
+        ldif = self._ldo.search_ext_s(sbase, SCOPE, sfilter)
+        result = self._stripReferences(ldif)
+        return result

@@ -91,3 +91,26 @@ class TestLOMGetMethods(unittest.TestCase):
             (None, ['ldaps://foo.bar/cn=ref'])]
         actualresult = lom.gets("", "name=alice")
         self.assertEqual(expectedresult, actualresult)
+
+    def testGetm(self, mock_ldap):
+        uri = 'ldaps://foo.bar:636'
+        ldo = mock_ldap.ldapobject.LDAPObject(uri)
+        mock_ldap.initialize.return_value = ldo
+        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
+            src.ldapobjectmanager.auth.kerb)
+
+        expectedresult = [
+            ('CN=fred,OU=People,DC=foo,DC=bar', {'name': ['fred']}),
+            ('CN=george,OU=People,DC=foo,DC=bar', {'name': ['george']})
+            ]
+        ldo.search_ext_s.return_value = expectedresult
+        actualresult = lom.getm("", "(|(name=fred)(name=george))")
+        self.assertEqual(expectedresult, actualresult)
+
+        # repeat with reference in result
+        alice = ('CN=alice,OU=People,DC=foo,DC=bar', {'name': ['alice']})
+        reference = (None, ['ldaps://foo.bar/cn=ref'])
+        ldo.search_ext_s.return_value = [reference, alice, alice, reference,
+            reference, alice, alice, reference, alice, reference]
+        actualresult = lom.getm("", "name=alice")
+        self.assertEqual([alice, alice, alice, alice, alice], actualresult)
