@@ -3,39 +3,33 @@ import unittest
 import src.ldapobjectmanager
 
 @mock.patch('src.ldapobjectmanager.ldap', autospec=True)
-class TestLOMGetMethods(unittest.TestCase):
-
-    def setUp(self):
-        pass
+class TestLOMInitializationAndOptions(unittest.TestCase):
 
     def testAuth(self, mock_ldap):
         uri = 'ldaps://foo.bar:636'
+        def getNewLDOandLOM(auth, **kwargs):
+            ldo = mock_ldap.ldapobject.LDAPObject(uri)
+            mock_ldap.initialize.return_value = ldo
+            lom = src.ldapobjectmanager.LDAPObjectManager(uri, auth, **kwargs)
+            return ldo, lom
 
         # no auth
-        ldo = mock_ldap.ldapobject.LDAPObject(uri)
-        mock_ldap.initialize.return_value = ldo
-        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
-            src.ldapobjectmanager.auth.noauth)
+        ldo, lom = getNewLDOandLOM(src.ldapobjectmanager.auth.noauth)
         self.assertEqual(ldo.simple_bind_s.call_args_list, [])
         self.assertEqual(ldo.sasl_interactive_bind_s.call_args_list, [])
 
         # simple auth
-        ldo = mock_ldap.ldapobject.LDAPObject(uri)
-        mock_ldap.initialize.return_value = ldo
         user = 'foo'
         password = 'bar'
-        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
-            src.ldapobjectmanager.auth.simple, user=user, password=password)
+        ldo, lom = getNewLDOandLOM(src.ldapobjectmanager.auth.simple,
+            user=user, password=password)
         self.assertEqual(ldo.simple_bind_s.call_args_list,
             [((user, password),)])
 
         # kerb auth
-        ldo = mock_ldap.ldapobject.LDAPObject(uri)
-        mock_ldap.initialize.return_value = ldo
         sasl = mock.MagicMock()
         mock_ldap.sasl.gssapi.return_value = sasl
-        lom = src.ldapobjectmanager.LDAPObjectManager(uri,
-            src.ldapobjectmanager.auth.kerb)
+        ldo, lom = getNewLDOandLOM(src.ldapobjectmanager.auth.kerb)
         self.assertEqual(ldo.sasl_interactive_bind_s.call_args_list,
             [(('', sasl),)])
 
@@ -55,6 +49,9 @@ class TestLOMGetMethods(unittest.TestCase):
                     self.assertEqual(ldo.set_option.call_args, 
                         ((getattr(mock_ldap, key), value),))
         addOption(OPT_X_TLS=1, OPT_BOGUS=1, OPT_URI="ldaps://baz.bar")
+
+@mock.patch('src.ldapobjectmanager.ldap', autospec=True)
+class TestLOMGetMethods(unittest.TestCase):
 
     def testGets(self, mock_ldap):
         uri = 'ldaps://foo.bar:636'

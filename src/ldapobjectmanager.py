@@ -1,6 +1,8 @@
 import ldap
 import ldap.sasl
 
+SCOPE=ldap.SCOPE_SUBTREE
+
 class auth():
     kerb, simple, noauth = range(3)
 
@@ -19,7 +21,7 @@ class LDAPObjectManager():
         return filter(lambda x: x[0] is not None, ldif)
 
     def gets(self, sbase, sfilter):
-        ldif = self._ldo.search_ext_s(sbase, ldap.SCOPE_SUBTREE, sfilter)
+        ldif = self._ldo.search_ext_s(sbase, SCOPE, sfilter)
         result = self._stripReferences(ldif)
         if not result:
             raise RuntimeError("""No results found for single-object query:
