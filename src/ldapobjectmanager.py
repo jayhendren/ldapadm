@@ -1,10 +1,10 @@
 import ldap
 import ldap.sasl
 
-SCOPE=ldap.SCOPE_SUBTREE
+SCOPE=ldap.SCOPE_SUBTREE # hardcoded for now; to be moved to configuration
 
 class auth():
-    kerb, simple, noauth = range(3)
+    kerb, simple, noauth = "kerb_auth", "simple_auth", "no_auth"
 
 class LDAPObjectManager():
 
