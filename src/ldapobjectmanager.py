@@ -9,6 +9,9 @@ class auth():
 class LDAPObjectManager():
 
     def __init__(self, uri, authtype, user=None, password=None, **kwargs):
+        if not authtype in [auth.kerb, auth.simple, auth.noauth]:
+            raise ValueError("'%s' is not a supported authentication method" \
+                             % authtype)
         self._ldo = ldap.initialize(uri)
         for key, value in kwargs.items():
             self._ldo.set_option(getattr(ldap, key), value)

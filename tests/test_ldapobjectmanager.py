@@ -29,18 +29,22 @@ class LOMTestCase(unittest.TestCase):
 
 class TestLOMInitializationAndOptions(LOMTestCase):
 
-    def testNoAuth(self):
+    def testBadAuthTypeThrowsValueError(self):
+        with self.assertRaises(ValueError):
+            ldo, lom = self.getNewLDOandLOM("Totally bogus auth value")
+
+    def testNoAuthShouldNotCauseBindCall(self):
         ldo, lom = self.getNewLDOandLOM(auth.noauth)
         self.assert_no_calls(ldo.simple_bind_s)
         self.assert_no_calls(ldo.sasl_interactive_bind_s)
 
-    def testSimpleAuth(self):
+    def testSimpleAuthCausesSimpleBindCall(self):
         user = 'foo'
         password = 'bar'
         ldo, lom = self.getNewLDOandLOM(auth.simple, user=user, password=password)
         ldo.simple_bind_s.assert_called_once_with(user, password)
 
-    def testKerbAuth(self):
+    def testKerbAuthCausesSASLBindCall(self):
         sasl = mock.MagicMock()
         self.mock_ldap.sasl.gssapi.return_value = sasl
         ldo, lom = self.getNewLDOandLOM(auth.kerb)
