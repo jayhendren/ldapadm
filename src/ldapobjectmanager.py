@@ -9,6 +9,7 @@ class auth():
 class LDAPObjectManager():
 
     def __init__(self, uri, authtype, user=None, password=None, **kwargs):
+        # not sure that I like hardcoding the list of supported auth types...
         if not authtype in [auth.kerb, auth.simple, auth.noauth]:
             raise ValueError("'%s' is not a supported authentication method" \
                              % authtype)
@@ -23,8 +24,8 @@ class LDAPObjectManager():
     def _stripReferences(self, ldif):
         return filter(lambda x: x[0] is not None, ldif)
 
-    def gets(self, sbase, sfilter):
-        ldif = self._ldo.search_ext_s(sbase, SCOPE, sfilter)
+    def gets(self, sbase, sfilter, scope=SCOPE):
+        ldif = self._ldo.search_ext_s(sbase, scope, sfilter)
         result = self._stripReferences(ldif)
         if not result:
             raise RuntimeError("""No results found for single-object query:
@@ -38,6 +39,6 @@ filter: %s
 results: %s""" %(sbase, sfilter, [r[0] for r in result]))
         return result[0]
 
-    def getm(self, sbase, sfilter):
-        return self._stripReferences(self._ldo.search_ext_s(sbase, SCOPE,
+    def getm(self, sbase, sfilter, scope=SCOPE):
+        return self._stripReferences(self._ldo.search_ext_s(sbase, scope,
                                                             sfilter))
