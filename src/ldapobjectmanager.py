@@ -1,6 +1,8 @@
 import ldap
 import ldap.sasl
+import ldap.modlist
 import textwrap
+import copy
 
 SCOPE=ldap.SCOPE_SUBTREE # hardcoded for now; to be moved to configuration
 
@@ -43,3 +45,10 @@ class LDAPObjectManager():
     def getMultiple(self, sbase, sfilter, scope=SCOPE):
         return self._stripReferences(self._ldo.search_ext_s(sbase, scope,
                                                             sfilter))
+
+    def addAttr(self, sbase, dn, attr, value):
+        oldobj = self.getSingle(sbase, "dn=%s" %dn)
+        newobj = copy.deepcopy(oldobj)
+        newobj[1][attr].append(value)
+        ml = ldap.modlist.modifyModlist(oldobj, newobj)
+        self._ldo.modify_ext_s(dn, ml)

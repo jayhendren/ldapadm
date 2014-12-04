@@ -64,13 +64,13 @@ class TestLOMInitializationAndOptions(LOMTestCase):
         assertOptionsAdded(OPT_X_TLS=1)
         assertOptionsAdded(OPT_REFERRALS=0, OPT_URI="ldaps://baz.bar")
 
-class LOMGetMethodsTestCase(LOMTestCase):
+class LOMMethodTestCase(LOMTestCase):
 
     def setUp(self):
-        super(LOMGetMethodsTestCase, self).setUp()
+        super(LOMMethodTestCase, self).setUp()
         self.ldo, self.lom = self.getNewLDOandLOM(auth.kerb)
 
-class TestLOMGetSingle(LOMGetMethodsTestCase):
+class TestLOMGetSingle(LOMMethodTestCase):
 
     def testGetSingleThrowsExceptionForNoResultsFound(self):
         self.ldo.search_ext_s.return_value = []
@@ -102,7 +102,7 @@ class TestLOMGetSingle(LOMGetMethodsTestCase):
 
         self.assertEqual(expectedresult, self.lom.getMultiple("", ""))
 
-class TestLOMGetMultiple(LOMGetMethodsTestCase):
+class TestLOMGetMultiple(LOMMethodTestCase):
 
     def testGetMultipleSuccessfullyReturnsMultipleResults(self):
         expectedresult = [person('fred'), person('george')]
@@ -118,3 +118,20 @@ class TestLOMGetMultiple(LOMGetMethodsTestCase):
         ]
         actualresult = self.lom.getMultiple("", "name=susie")
         self.assertEqual([susie] * 5, actualresult)
+
+class TestLOMAddAttr(LOMMethodTestCase):
+
+    def testAddAttrCreatesModlistAndCallsModify(self):
+        dn = 'cn=foo,dc=bar,dc=baz'
+        attr = 'awesome list'
+        value1 = 'item 1'
+        value2 = 'item 2'
+        oldobj = (dn, {attr: [value1]})
+        newobj = (dn, {attr: [value1, value2]})
+        modlist = mock.MagicMock()
+        self.mock_ldap.modlist.modifyModlist.return_value = modlist
+        self.ldo.search_ext_s.return_value = [oldobj]
+        self.lom.addAttr("", dn, attr, value2)
+        self.mock_ldap.modlist.modifyModlist.assert_called_once_with(oldobj,
+                                                                     newobj)
+        self.ldo.modify_ext_s.assert_called_once_with(dn, modlist)
