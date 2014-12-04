@@ -1,5 +1,6 @@
 import ldap
 import ldap.sasl
+import textwrap
 
 SCOPE=ldap.SCOPE_SUBTREE # hardcoded for now; to be moved to configuration
 
@@ -28,15 +29,15 @@ class LDAPObjectManager():
         ldif = self._ldo.search_ext_s(sbase, scope, sfilter)
         result = self._stripReferences(ldif)
         if not result:
-            raise RuntimeError("""No results found for single-object query:
-base: %s 
-filter: %s""" %(sbase, sfilter))
+            raise RuntimeError(textwrap.dedent("""\
+                               No results found for single-object query:
+                               base: '%s' 
+                               filter: '%s'""" %(sbase, sfilter)))
         if len(result) > 1:
-            raise RuntimeError("""Too many results found for single-object \
-query:
-base: %s
-filter: %s
-results: %s""" %(sbase, sfilter, [r[0] for r in result]))
+            raise RuntimeError(textwrap.dedent("""\
+                               Too many results found for single-object query:
+                               base: '%s' 
+                               filter: '%s'""" %(sbase, sfilter)))
         return result[0]
 
     def getMultiple(self, sbase, sfilter, scope=SCOPE):
