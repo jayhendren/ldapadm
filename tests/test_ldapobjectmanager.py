@@ -136,3 +136,16 @@ class TestLOMAddAttr(LOMMethodTestCase):
         self.mock_ldap.modlist.modifyModlist.assert_called_once_with(oldobj,
                                                                      newobj)
         self.ldo.modify_ext_s.assert_called_once_with(self.dn, modlist)
+
+class TestLOMRmAttr(LOMMethodTestCase):
+
+    def testRmAttrCreatesModlistAndCallsModify(self):
+        oldobj = (self.dn, {self.attr: [self.value1, self.value2]})
+        newobj = (self.dn, {self.attr: [self.value1]})
+        modlist = mock.MagicMock()
+        self.mock_ldap.modlist.modifyModlist.return_value = modlist
+        self.ldo.search_ext_s.return_value = [oldobj]
+        self.lom.rmAttr("", self.dn, self.attr, self.value2)
+        self.mock_ldap.modlist.modifyModlist.assert_called_once_with(oldobj,
+                                                                     newobj)
+        self.ldo.modify_ext_s.assert_called_once_with(self.dn, modlist)

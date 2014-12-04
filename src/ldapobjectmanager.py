@@ -52,3 +52,10 @@ class LDAPObjectManager():
         newobj[1][attr].append(value)
         ml = ldap.modlist.modifyModlist(oldobj, newobj)
         self._ldo.modify_ext_s(dn, ml)
+
+    def rmAttr(self, sbase, dn, attr, value):
+        oldobj = self.getSingle(sbase, "dn=%s" %dn)
+        newobj = copy.deepcopy(oldobj)
+        newobj[1][attr].remove(value)
+        ml = ldap.modlist.modifyModlist(oldobj, newobj)
+        self._ldo.modify_ext_s(dn, ml)
