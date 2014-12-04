@@ -24,7 +24,7 @@ class LDAPObjectManager():
     def _stripReferences(self, ldif):
         return filter(lambda x: x[0] is not None, ldif)
 
-    def gets(self, sbase, sfilter, scope=SCOPE):
+    def getSingle(self, sbase, sfilter, scope=SCOPE):
         ldif = self._ldo.search_ext_s(sbase, scope, sfilter)
         result = self._stripReferences(ldif)
         if not result:
@@ -39,6 +39,6 @@ filter: %s
 results: %s""" %(sbase, sfilter, [r[0] for r in result]))
         return result[0]
 
-    def getm(self, sbase, sfilter, scope=SCOPE):
+    def getMultiple(self, sbase, sfilter, scope=SCOPE):
         return self._stripReferences(self._ldo.search_ext_s(sbase, scope,
                                                             sfilter))

@@ -70,51 +70,51 @@ class LOMGetMethodsTestCase(LOMTestCase):
         super(LOMGetMethodsTestCase, self).setUp()
         self.ldo, self.lom = self.getNewLDOandLOM(auth.kerb)
 
-class TestLOMGets(LOMGetMethodsTestCase):
+class TestLOMGetSingle(LOMGetMethodsTestCase):
 
-    def testGetsThrowsExceptionForNoResultsFound(self):
+    def testGetSingleThrowsExceptionForNoResultsFound(self):
         self.ldo.search_ext_s.return_value = []
         with self.assertRaises(RuntimeError):
-            self.lom.gets("", "")
+            self.lom.getSingle("", "")
 
-    def testGetsThrowsExceptionForOnlyReferencesFound(self):
+    def testGetSingleThrowsExceptionForOnlyReferencesFound(self):
         # sometimes references are included in the result
         # these have no DN and should be discarded from the result
         self.ldo.search_ext_s.return_value = [(None, ['ldaps://foo.bar/cn=ref'])]
         with self.assertRaises(RuntimeError):
-            self.lom.gets("", "")
+            self.lom.getSingle("", "")
 
-    def testGetsSuccessfullyReturnsExactlyOneObject(self):
+    def testGetSingleSuccessfullyReturnsExactlyOneObject(self):
         alice = person('alice')
         self.ldo.search_ext_s.return_value = [alice]
-        self.assertEqual(alice, self.lom.gets("", "name=alice"))
+        self.assertEqual(alice, self.lom.getSingle("", "name=alice"))
 
-    def testGetsSuccessfullyReturnsExactlyOneObject(self):
+    def testGetSingleSuccessfullyReturnsExactlyOneObject(self):
         bob = person('bob')
         self.ldo.search_ext_s.return_value = [bob, reference()]
-        self.assertEqual(bob, self.lom.gets("", "name=bob"))
+        self.assertEqual(bob, self.lom.getSingle("", "name=bob"))
 
-    def testGetsThrowsExceptionWhenMultipleResultsFound(self):
+    def testGetSingleThrowsExceptionWhenMultipleResultsFound(self):
         expectedresult = [person('fred'), person('george')]
         self.ldo.search_ext_s.return_value = expectedresult
         with self.assertRaises(RuntimeError):
-            self.lom.gets("", "")
+            self.lom.getSingle("", "")
 
-        self.assertEqual(expectedresult, self.lom.getm("", ""))
+        self.assertEqual(expectedresult, self.lom.getMultiple("", ""))
 
-class TestLOMGetm(LOMGetMethodsTestCase):
+class TestLOMGetMultiple(LOMGetMethodsTestCase):
 
-    def testGetmSuccessfullyReturnsMultipleResults(self):
+    def testGetMultipleSuccessfullyReturnsMultipleResults(self):
         expectedresult = [person('fred'), person('george')]
         self.ldo.search_ext_s.return_value = expectedresult
-        self.assertEqual(expectedresult, self.lom.getm("", ""))
+        self.assertEqual(expectedresult, self.lom.getMultiple("", ""))
 
-    def testGetmRemovesReferenceFromResult(self):
+    def testGetMultipleRemovesReferenceFromResult(self):
         susie = person('susie')
         ref = reference()
         self.ldo.search_ext_s.return_value = [
             ref, susie, susie, ref,
             ref, susie, susie, ref, susie, ref
         ]
-        actualresult = self.lom.getm("", "name=susie")
+        actualresult = self.lom.getMultiple("", "name=susie")
         self.assertEqual([susie] * 5, actualresult)
