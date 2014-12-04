@@ -66,6 +66,11 @@ class TestLOMInitializationAndOptions(LOMTestCase):
 
 class LOMMethodTestCase(LOMTestCase):
 
+    dn = 'cn=foo,dc=bar,dc=baz'
+    attr = 'awesome list'
+    value1 = 'item 1'
+    value2 = 'item 2'
+
     def setUp(self):
         super(LOMMethodTestCase, self).setUp()
         self.ldo, self.lom = self.getNewLDOandLOM(auth.kerb)
@@ -122,16 +127,12 @@ class TestLOMGetMultiple(LOMMethodTestCase):
 class TestLOMAddAttr(LOMMethodTestCase):
 
     def testAddAttrCreatesModlistAndCallsModify(self):
-        dn = 'cn=foo,dc=bar,dc=baz'
-        attr = 'awesome list'
-        value1 = 'item 1'
-        value2 = 'item 2'
-        oldobj = (dn, {attr: [value1]})
-        newobj = (dn, {attr: [value1, value2]})
+        oldobj = (self.dn, {self.attr: [self.value1]})
+        newobj = (self.dn, {self.attr: [self.value1, self.value2]})
         modlist = mock.MagicMock()
         self.mock_ldap.modlist.modifyModlist.return_value = modlist
         self.ldo.search_ext_s.return_value = [oldobj]
-        self.lom.addAttr("", dn, attr, value2)
+        self.lom.addAttr("", self.dn, self.attr, self.value2)
         self.mock_ldap.modlist.modifyModlist.assert_called_once_with(oldobj,
                                                                      newobj)
-        self.ldo.modify_ext_s.assert_called_once_with(dn, modlist)
+        self.ldo.modify_ext_s.assert_called_once_with(self.dn, modlist)
