@@ -158,3 +158,14 @@ class TestLOMCreateObj(LOMMethodTestCase):
         # unhelpful, generic error if the attributes list is empty
         with self.assertRaises(ValueError):
             self.lom.createObj('cn=bogus', {})
+
+    def testCreateObjCallsAddModlistAndAddExtS(self):
+        dn = 'cn=awesome,cn=users,dc=ldap,dc=test'
+        attrs = {'objectClass': ['posixaccount'],
+                 'uid'        : '123456',
+                 'gid'        : '123456'}
+        modlist = mock.MagicMock()
+        self.mock_ldap.modlist.addModlist.return_value = modlist
+        self.lom.createObj(dn, attrs)
+        self.mock_ldap.modlist.addModlist.assert_called_once_with(attrs)
+        self.ldo.add_ext_s.assert_called_once_with(dn, modlist)

@@ -62,4 +62,6 @@ class LDAPObjectManager():
         self._ldo.modify_ext_s(dn, ml)
 
     def createObj(self, dn, attrs):
-        raise ValueError
+        if not attrs:
+            raise ValueError("New objects must have at least one attribute")
+        self._ldo.add_ext_s(dn, ldap.modlist.addModlist(attrs))
