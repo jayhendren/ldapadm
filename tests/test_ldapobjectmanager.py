@@ -149,3 +149,12 @@ class TestLOMRmAttr(LOMMethodTestCase):
         self.mock_ldap.modlist.modifyModlist.assert_called_once_with(oldobj,
                                                                      newobj)
         self.ldo.modify_ext_s.assert_called_once_with(self.dn, modlist)
+
+class TestLOMCreateObj(LOMMethodTestCase):
+
+    def testCreateObjRaisesExceptionIfNoAttributesProvided(self):
+        # if the attributes dict arg is empty, raise a ValueError
+        # this behavior is because downstream LDAP module only raises an
+        # unhelpful, generic error if the attributes list is empty
+        with self.assertRaises(ValueError):
+            self.lom.createObj('cn=bogus', {})

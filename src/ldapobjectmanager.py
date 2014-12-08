@@ -39,7 +39,8 @@ class LDAPObjectManager():
             raise RuntimeError(textwrap.dedent("""\
                                Too many results found for single-object query:
                                base: '%s' 
-                               filter: '%s'""" %(sbase, sfilter)))
+                               filter: '%s'
+                               results: '%s'""" %(sbase, sfilter, result)))
         return result[0]
 
     def getMultiple(self, sbase, sfilter, scope=SCOPE):
