@@ -169,3 +169,12 @@ class TestLOMCreateObj(LOMMethodTestCase):
         self.lom.createObj(dn, attrs)
         self.mock_ldap.modlist.addModlist.assert_called_once_with(attrs)
         self.ldo.add_ext_s.assert_called_once_with(dn, modlist)
+
+class TestLOMDeleteObj(LOMMethodTestCase):
+
+    def testDeleteObjCallsDelExtS(self):
+        # I suppose I probably shouldn't test this since it's just a wrapper
+        # method, but I'm adding the test case for consistency's sake
+        dn = 'cn=deleteme'
+        self.lom.deleteObj(dn)
+        self.ldo.delete_ext_s.assert_called_once_with(dn)
