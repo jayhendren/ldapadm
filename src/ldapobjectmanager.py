@@ -25,7 +25,7 @@ class LDAPObjectManager():
             self._ldo.sasl_interactive_bind_s('', ldap.sasl.gssapi())
 
     def _stripReferences(self, ldif):
-        return filter(lambda x: x[0] is not None, ldif)
+        return [x for x in ldif if x[0] is not None]
 
     def getSingle(self, sbase, sfilter, scope=SCOPE):
         ldif = self._ldo.search_ext_s(sbase, scope, sfilter)
