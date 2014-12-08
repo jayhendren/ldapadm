@@ -60,3 +60,6 @@ class LDAPObjectManager():
         newobj[1][attr].remove(value)
         ml = ldap.modlist.modifyModlist(oldobj, newobj)
         self._ldo.modify_ext_s(dn, ml)
+
+    def createObj(self, dn, attrs):
+        raise ValueError
