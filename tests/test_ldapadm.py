@@ -12,9 +12,16 @@ def parseConf():
 
 conf = parseConf()
 
-def runLdapadm(*args):
-    # this function returns tuple (stdout, stderr, exitcode) of ldapadm output
-    cmd = [os.path.join(proj_root_dir, 'scripts/ldapadm.py')] + list(args)
+def runLdapadm(*args, **kwargs):
+    # runLdapadm() returns tuple (stdout, stderr, exitcode) of ldapadm output
+
+    # add "-c /path/to/test/config.yaml" arg if "use_default_config" kwarg
+    # is either not present or True
+    use_default_config = kwargs.get('use_default_config')
+    if use_default_config in (None, True):
+        args = ('-c', conf_path) + args
+
+    cmd = [os.path.join(proj_root_dir, 'src/ldapadm.py')] + list(args)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     result =  proc.communicate()
@@ -30,16 +37,16 @@ class LdapadmTest(unittest.TestCase):
     def setUp(self):
         self.lom = getLOM()
 
-    def assertLdapadmSucceeds(self, *args):
-        self.assertEqual(runLdapadm(*args)[2], 0)
+    def assertLdapadmSucceeds(self, *args, **kwargs):
+        self.assertEqual(runLdapadm(*args, **kwargs)[2], 0)
 
-    def assertLdapadmFails(self, *args):
-        self.assertNotEqual(runLdapadm(*args)[2], 0)
+    def assertLdapadmFails(self, *args, **kwargs):
+        self.assertNotEqual(runLdapadm(*args, **kwargs)[2], 0)
 
 class LdapadmBasicTests(LdapadmTest):
 
     def testLdapadmCalledWithoutArgumentsReturnsError(self):
-        self.assertLdapadmFails()
+        self.assertLdapadmFails(use_default_config=False)
 
     def testHelpSwitchesExitCodeZeroAndProduceOutput(self):
         self.assertRegexpMatches(runLdapadm("-h")[0], r'usage:')

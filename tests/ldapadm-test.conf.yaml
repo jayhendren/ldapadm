@@ -11,6 +11,7 @@
 #   search:        # attributes to look in for "search" commands. default: [cn, sn]
 #   filter:        # apply this search filter when retrieving users
 #   display:       # attributes to display when retrieving users/groups
+#                  # the special value 'all' will cause all attributes to be printed
 # group:
 #   base:
 #   scope:
@@ -47,4 +48,4 @@ user:
   scope: onelevel
   identifier: uid
   search: [cn, uidNumber, uid, mail, sn, displayName, gecos, givenName, initials]
-  display: [uid, uidNumber, gidNumber, gecos, cn, sn]
+  display: [uid, uidNumber, gidNumber, gecos, cn, sn, memberOf]
