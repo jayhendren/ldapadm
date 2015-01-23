@@ -15,10 +15,8 @@ conf = parseConf()
 def runLdapadm(*args, **kwargs):
     # runLdapadm() returns tuple (stdout, stderr, exitcode) of ldapadm output
 
-    # add "-c /path/to/test/config.yaml" arg if "use_default_config" kwarg
-    # is either not present or True
-    use_default_config = kwargs.get('use_default_config')
-    if use_default_config in (None, True):
+    use_default_config = kwargs.get('use_default_config', True)
+    if use_default_config:
         args = ('-c', conf_path) + args
 
     cmd = [os.path.join(proj_root_dir, 'src/ldapadm.py')] + list(args)
@@ -70,16 +68,16 @@ class LdapadmGetTests(LdapadmTest):
             return self.lom.getSingle(conf['user']['base'],
                 '%s=%s' %(conf['user']['identifier'], search_term))
 
-        def verifyOutput(output, object):
-            for attr in conf['user']['display']:
-                for value in object[1][attr]:
-                    regex = r'%s\s*:\s*%s' %(attr, value)
-                    self.assertRegexpMatches(output[0], regex)
+        def verifyOutput(output, object, search_term):
+            output_obj = yaml.load(output[0])[search_term]
+            filtered_obj = {k:object[1].get(k) \
+                            for k in conf['user']['display']}
+            self.assertEqual(output_obj, filtered_obj)
 
         def verifyCanGetUser(search_term):
             output = getOutput(search_term)
             object = getObject(search_term)
-            verifyOutput(output, object)
+            verifyOutput(output, object, search_term)
 
         def verifyCannotGetUser(search_term):
             self.assertLdapadmFails(search_term)
