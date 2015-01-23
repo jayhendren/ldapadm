@@ -10,8 +10,8 @@
 #   identifier:    # attribute to look in for "get" commands. default: cn
 #   search:        # attributes to look in for "search" commands. default: [cn, sn]
 #   filter:        # apply this search filter when retrieving users
-#   display:       # attributes to display when retrieving users/groups
-#                  # the special value 'all' will cause all attributes to be printed
+#   display:       # attributes to display when retrieving users/groups.
+#                  # if not given, all attributes will be printed
 # group:
 #   base:
 #   scope:
@@ -45,7 +45,11 @@ password: 'Secret123'
 uri: "ldap://ipa.demo1.freeipa.org"
 user:
   base: "cn=users,cn=accounts,dc=demo1,dc=freeipa,dc=org"
-  scope: onelevel
   identifier: uid
   search: [cn, uidNumber, uid, mail, sn, displayName, gecos, givenName, initials]
   display: [uid, uidNumber, gidNumber, gecos, cn, sn, memberOf]
+group:
+  base: "cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org"
+  identifier: cn
+  search: [dn, cn, gidNumber, description]
+  display: [dn, cn, gidNumber, description, member, memberOf]

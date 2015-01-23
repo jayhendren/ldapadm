@@ -41,6 +41,27 @@ class LdapadmTest(unittest.TestCase):
     def assertLdapadmFails(self, *args, **kwargs):
         self.assertNotEqual(runLdapadm(*args, **kwargs)[2], 0)
 
+    def getOutput(self, type, search_term):
+        return runLdapadm('get', type, search_term)
+
+    def getObject(self, type, search_term):
+        return self.lom.getSingle(conf[type]['base'],
+            '%s=%s' %(conf[type]['identifier'], search_term))
+
+    def verifyOutput(self, output, object, type, search_term):
+        output_obj = yaml.load(output[0])[search_term]
+        filtered_obj = {k:object[1].get(k) \
+                        for k in conf[type]['display']}
+        self.assertEqual(output_obj, filtered_obj)
+
+    def verifyCanGet(self, type, search_term):
+        output = self.getOutput(type, search_term)
+        object = self.getObject(type, search_term)
+        self.verifyOutput(output, object, type, search_term)
+
+    def verifyCannotGet(self, type, search_term):
+        self.assertLdapadmFails(type, search_term)
+
 class LdapadmBasicTests(LdapadmTest):
 
     def testLdapadmCalledWithoutArgumentsReturnsError(self):
@@ -58,31 +79,14 @@ class LdapadmGetTests(LdapadmTest):
 
     def testSimpleGetUser(self):
 
-        # get user results must contain 'attribute: value'
-        # for all display attributes listed in configuration
-
-        def getOutput(search_term):
-            return runLdapadm('get', 'user', search_term)
-
-        def getObject(search_term):
-            return self.lom.getSingle(conf['user']['base'],
-                '%s=%s' %(conf['user']['identifier'], search_term))
-
-        def verifyOutput(output, object, search_term):
-            output_obj = yaml.load(output[0])[search_term]
-            filtered_obj = {k:object[1].get(k) \
-                            for k in conf['user']['display']}
-            self.assertEqual(output_obj, filtered_obj)
-
-        def verifyCanGetUser(search_term):
-            output = getOutput(search_term)
-            object = getObject(search_term)
-            verifyOutput(output, object, search_term)
-
-        def verifyCannotGetUser(search_term):
-            self.assertLdapadmFails(search_term)
-
         for user in ('bogus', 'totallynotauser'):
-            verifyCannotGetUser(user)
+            self.verifyCannotGet('user', user)
         for user in ('admin', 'manager', 'employee', 'helpdesk'):
-            verifyCanGetUser(user)
+            self.verifyCanGet('user', user)
+
+    def testSimpleGetUnixGroup(self):
+
+        for group in ('bogus', 'totallynotagroup'):
+            self.verifyCannotGet('group', group)
+        for group in ('admins', 'managers', 'employees', 'helpdesk'):
+            self.verifyCanGet('group', group)

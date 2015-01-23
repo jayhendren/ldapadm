@@ -4,17 +4,22 @@ import argparse
 import yaml
 from ldapobjectmanager import LDAPObjectManager, auth
 
-def get_user(args, conf, ldo):
-    usernames = args.username
+def print_result(output, conf):
+    print yaml.dump(output)
+
+def get_items(type, search_terms, conf, ldo):
     output_obj = {}
-    for u in usernames:
-        obj = ldo.getSingle(conf['user']['base'],
-                            "%s=%s" %(conf['user']['identifier'], u))
-        output_obj[u] = {k:obj[1].get(k) for k in conf['user']['display']}
-    print yaml.dump(output_obj)
+    for t in search_terms:
+        obj = ldo.getSingle(conf[type]['base'],
+                            "%s=%s" %(conf[type]['identifier'], t))
+        output_obj[t] = {k:obj[1].get(k) for k in conf[type]['display']}
+    return output_obj
+
+def get_user(args, conf, ldo):
+    print_result(get_items('user', args.username, conf, ldo), conf)
 
 def get_group(args, conf, ldo):
-    pass
+    print_result(get_items('group', args.group, conf, ldo), conf)
 
 def get_access(args, conf, ldo):
     pass
