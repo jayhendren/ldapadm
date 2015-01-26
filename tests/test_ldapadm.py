@@ -15,16 +15,28 @@ conf = parseConf()
 def runLdapadm(*args, **kwargs):
     # runLdapadm() returns tuple (stdout, stderr, exitcode) of ldapadm output
 
+    raise_on_error = kwargs.get('raise_on_error', True)
+    raise_on_success = kwargs.get('raise_on_success', False)
     use_default_config = kwargs.get('use_default_config', True)
+    if raise_on_success: raise_on_error = False
+
     if use_default_config:
         args = ('-c', conf_path) + args
 
     cmd = [os.path.join(proj_root_dir, 'src/ldapadm.py')] + list(args)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
-    result =  proc.communicate()
+    result = proc.communicate()
+    result = result + (proc.returncode,)
     # if proc.returncode != 0: raise subprocess.CalledProcessError('', '')
-    return result + (proc.returncode,)
+    if (raise_on_error and proc.returncode != 0) or \
+       (raise_on_success and proc.returncode == 0):
+        msg = "Ldapadm unexpectedly exited with nonzero return code."
+        if raise_on_success:
+            msg = "Ldapadm unexpectedly ran successfully."
+        raise RuntimeError( "%s\n" % msg + "args: %s\n" % (args,) + \
+                           "Stdout:\n%s\nStderr:\n%s\nErr: %s"  % result)
+    return result
 
 def getLOM():
     return LDAPObjectManager(conf['uri'], auth.simple, user=conf['username'],
@@ -36,10 +48,10 @@ class LdapadmTest(unittest.TestCase):
         self.lom = getLOM()
 
     def assertLdapadmSucceeds(self, *args, **kwargs):
-        self.assertEqual(runLdapadm(*args, **kwargs)[2], 0)
+        runLdapadm(*args, **kwargs)
 
     def assertLdapadmFails(self, *args, **kwargs):
-        self.assertNotEqual(runLdapadm(*args, **kwargs)[2], 0)
+        runLdapadm(*args, raise_on_success=True, **kwargs)
 
     def getOutput(self, type, search_term):
         return runLdapadm('get', type, search_term)
@@ -60,7 +72,7 @@ class LdapadmTest(unittest.TestCase):
         self.verifyOutput(output, object, type, search_term)
 
     def verifyCannotGet(self, type, search_term):
-        self.assertLdapadmFails(type, search_term)
+        self.assertLdapadmFails('get', type, search_term)
 
 class LdapadmBasicTests(LdapadmTest):
 
@@ -90,3 +102,10 @@ class LdapadmGetTests(LdapadmTest):
             self.verifyCannotGet('group', group)
         for group in ('admins', 'managers', 'employees', 'helpdesk'):
             self.verifyCanGet('group', group)
+
+    def testSimpleGetAccessGroup(self):
+
+        for access in ('bogus', 'totallynotaaccess'):
+            self.verifyCannotGet('access', access)
+        for access in ('admins', 'managers', 'employees', 'helpdesk'):
+            self.verifyCanGet('access', access)

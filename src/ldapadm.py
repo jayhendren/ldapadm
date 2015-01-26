@@ -22,7 +22,8 @@ def get_group(args, conf, ldo):
     print_result(get_items('group', args.group, conf, ldo), conf)
 
 def get_access(args, conf, ldo):
-    pass
+    print_result(get_items('access', args.hostname, conf, ldo), conf)
+    
 
 if __name__ == '__main__':
     # parent parser for arguments that are common to all sub-commands
