@@ -17,13 +17,16 @@ class LDAPAdminTool():
     def print_result(self, output):
         print yaml.dump(output)
     
-    def get_items(self, type, search_terms):
+    def get_item(self, item_type, search_term):
+        return self.ldo.getSingle(self.config[item_type]['base'],
+            "%s=%s" %(self.config[item_type]['identifier'], search_term))
+
+    def get_items(self, item_type, search_terms):
         output_obj = {}
         for t in search_terms:
-            obj = self.ldo.getSingle(self.config[type]['base'],
-                "%s=%s" %(self.config[type]['identifier'], t))
+            obj = self.get_item(item_type, t)
             output_obj[t] = {k:obj[1].get(k) for k in \
-                             self.config[type]['display']}
+                             self.config[item_type]['display']}
         return output_obj
     
     def get_user(self, *users):
