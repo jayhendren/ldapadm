@@ -52,9 +52,9 @@ group:
   base: "cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org"
   identifier: cn
   search: [dn, cn, gidNumber, description]
-  display: [dn, cn, gidNumber, description, member, memberOf]
+  display: [cn, gidNumber, description, member, memberOf]
 access:
   base: "cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org"
   identifier: cn
   search: [dn, cn, description]
-  display: [dn, cn, description, memberOf]
+  display: [cn, description, memberOf]
