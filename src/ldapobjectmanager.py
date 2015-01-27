@@ -47,17 +47,18 @@ class LDAPObjectManager():
         return self._stripReferences(self._ldo.search_ext_s(sbase, scope,
             sfilter, attrlist=attrs))
 
-    def addAttr(self, sbase, dn, attr, value):
+    def addAttr(self, sbase, dn, attr, *values):
         oldobj = self.getSingle(sbase, "dn=%s" %dn)
         newobj = copy.deepcopy(oldobj)
-        newobj[1][attr].append(value)
+        newobj[1][attr] = newobj[1][attr] + list(values)
         ml = ldap.modlist.modifyModlist(oldobj, newobj)
         self._ldo.modify_ext_s(dn, ml)
 
-    def rmAttr(self, sbase, dn, attr, value):
+    def rmAttr(self, sbase, dn, attr, *values):
         oldobj = self.getSingle(sbase, "dn=%s" %dn)
         newobj = copy.deepcopy(oldobj)
-        newobj[1][attr].remove(value)
+        for v in values:
+            newobj[1][attr].remove(v)
         ml = ldap.modlist.modifyModlist(oldobj, newobj)
         self._ldo.modify_ext_s(dn, ml)
 
