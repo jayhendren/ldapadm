@@ -4,28 +4,40 @@ import argparse
 import yaml
 from ldapobjectmanager import LDAPObjectManager, auth
 
-def print_result(output, conf):
-    print yaml.dump(output)
+class LDAPAdminTool():
 
-def get_items(type, search_terms, conf, ldo):
-    output_obj = {}
-    for t in search_terms:
-        obj = ldo.getSingle(conf[type]['base'],
-                            "%s=%s" %(conf[type]['identifier'], t))
-        output_obj[t] = {k:obj[1].get(k) for k in conf[type]['display']}
-    return output_obj
+    def __init__(self, config):
+        self.config = config
+        self.ldo = LDAPObjectManager(self.config['uri'], auth.simple,
+                                user=self.config['username'],
+                                password=self.config['password'],
+                                **self.config.get('options', {}))
 
-def get_user(args, conf, ldo):
-    print_result(get_items('user', args.username, conf, ldo), conf)
 
-def get_group(args, conf, ldo):
-    print_result(get_items('group', args.group, conf, ldo), conf)
-
-def get_access(args, conf, ldo):
-    print_result(get_items('access', args.hostname, conf, ldo), conf)
+    def print_result(self, output):
+        print yaml.dump(output)
+    
+    def get_items(self, type, search_terms):
+        output_obj = {}
+        for t in search_terms:
+            obj = self.ldo.getSingle(self.config[type]['base'],
+                "%s=%s" %(self.config[type]['identifier'], t))
+            output_obj[t] = {k:obj[1].get(k) for k in \
+                             self.config[type]['display']}
+        return output_obj
+    
+    def get_user(self, *users):
+        self.print_result(self.get_items('user', users))
+    
+    def get_group(self, *groups):
+        self.print_result(self.get_items('group', groups))
+    
+    def get_access(self, *hosts):
+        self.print_result(self.get_items('access', hosts))
     
 
 if __name__ == '__main__':
+
     # parent parser for arguments that are common to all sub-commands
     parent_parser = argparse.ArgumentParser(add_help=False)
     
@@ -41,7 +53,7 @@ if __name__ == '__main__':
     access_parser.add_argument('hostname', nargs="+")
     
     def add_command(subparser, command, function, **kwargs):
-        parser = subparser.add_parser(command, **kwargs)
+        parser = subparser.add_parser(command, dest='command', **kwargs)
         parser.set_defaults(func=function)
         return parser
     
@@ -51,17 +63,20 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', nargs=1,
                         help='path to a YAML-formatted configuration file')
     
-    subparser = parser.add_subparsers()
+    subparser = parser.add_subparsers(dest='command')
     
     # get commands
     parser_get = subparser.add_parser('get')
-    subparser_get = parser_get.add_subparsers()
-    add_command(subparser_get, 'user', get_user, parents=[user_parser],
-                description='get user description')
-    add_command(subparser_get, 'group', get_group, parents=[group_parser],
-                description='get group description')
-    add_command(subparser_get, 'access', get_access, parents=[access_parser],
-                description='get access description')
+    subparser_get = parser_get.add_subparsers(dest='get_command')
+    parser_get_user = subparser_get.add_parser('user',
+        parents=[user_parser],
+        description='get user description')
+    parser_get_group = subparser_get.add_parser('group',
+        parents=[group_parser],
+        description='get group description')
+    parser_get_access = subparser_get.add_parser('access',
+        parents=[access_parser],
+        description='get access description')
     
     # search commands
     parser_search = subparser.add_parser('search')
@@ -98,11 +113,14 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    conf_path = args.config[0]
-    conf = yaml.load(file(conf_path, 'r'))
-    ldo = LDAPObjectManager(conf['uri'], auth.simple,
-                            user=conf['username'],
-                            password=conf['password'],
-                            **conf.get('options', {}))
-    
-    args.func(args, conf, ldo)
+    config_path = args.config[0]
+    config = yaml.load(file(config_path, 'r'))
+    lat = LDAPAdminTool(config)
+
+    if args.command == 'get':
+        if args.get_command == 'user':
+            lat.get_user(*args.username)
+        elif args.get_command == 'group':
+            lat.get_group(*args.group)
+        elif args.get_command == 'access':
+            lat.get_access(*args.hostname)
