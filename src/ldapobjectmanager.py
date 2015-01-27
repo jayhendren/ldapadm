@@ -27,8 +27,8 @@ class LDAPObjectManager():
     def _stripReferences(self, ldif):
         return [x for x in ldif if x[0] is not None]
 
-    def getSingle(self, sbase, sfilter, scope=SCOPE):
-        ldif = self._ldo.search_ext_s(sbase, scope, sfilter)
+    def getSingle(self, sbase, sfilter, scope=SCOPE, attrs=None):
+        ldif = self._ldo.search_ext_s(sbase, scope, sfilter, attrlist=attrs)
         result = self._stripReferences(ldif)
         if not result:
             raise RuntimeError(textwrap.dedent("""\
@@ -43,9 +43,9 @@ class LDAPObjectManager():
                                results: '%s'""" %(sbase, sfilter, result)))
         return result[0]
 
-    def getMultiple(self, sbase, sfilter, scope=SCOPE):
+    def getMultiple(self, sbase, sfilter, scope=SCOPE, attrs=None):
         return self._stripReferences(self._ldo.search_ext_s(sbase, scope,
-                                                            sfilter))
+            sfilter, attrlist=attrs))
 
     def addAttr(self, sbase, dn, attr, value):
         oldobj = self.getSingle(sbase, "dn=%s" %dn)
