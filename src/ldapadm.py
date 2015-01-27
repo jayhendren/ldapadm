@@ -12,39 +12,30 @@ class LDAPAdminTool():
                                 user=self.config['username'],
                                 password=self.config['password'],
                                 **self.config.get('options', {}))
-
-
-    def print_result(self, output):
-        print yaml.dump(output)
     
-    def get_item(self, item_type, search_term):
+    def get_item(self, item_type, search_term, attrs=None):
         return self.ldo.getSingle(self.config[item_type]['base'],
-            "%s=%s" %(self.config[item_type]['identifier'], search_term))
+            "%s=%s" %(self.config[item_type]['identifier'], search_term),
+            attrs=attrs)
 
-    def get_items(self, item_type, search_terms):
+    def get_items(self, item_type, *search_terms):
         output_obj = {}
         for t in search_terms:
-            obj = self.get_item(item_type, t)
-            output_obj[t] = {k:obj[1].get(k) for k in \
-                             self.config[item_type]['display']}
+            obj = self.get_item(item_type, t,
+                                attrs=self.config[item_type].get('display'))
+            # add blank attrs for attrs in display list that aren't on object
+            for attr in self.config[item_type].get('display', []):
+                if obj[1].get(attr) is None:
+                    obj[1][attr] = None
+            output_obj[t] = obj[1]
         return output_obj
-    
-    def get_user(self, *users):
-        self.print_result(self.get_items('user', users))
-    
-    def get_group(self, *groups):
-        self.print_result(self.get_items('group', groups))
-    
-    def get_access(self, *hosts):
-        self.print_result(self.get_items('access', hosts))
-    
 
 if __name__ == '__main__':
 
     # parent parser for arguments that are common to all sub-commands
     parent_parser = argparse.ArgumentParser(add_help=False)
     
-    # parent parser for user, group, and access sub-commands
+    # parent parser for user, group, access, etc. sub-commands
     user_parser = argparse.ArgumentParser(parents=[parent_parser],
                                           add_help=False)
     user_parser.add_argument('username', nargs="+")
@@ -54,22 +45,23 @@ if __name__ == '__main__':
     access_parser = argparse.ArgumentParser(parents=[parent_parser],
                                             add_help=False)
     access_parser.add_argument('hostname', nargs="+")
-    
-    def add_command(subparser, command, function, **kwargs):
-        parser = subparser.add_parser(command, dest='command', **kwargs)
-        parser.set_defaults(func=function)
-        return parser
+    group_mod_parser = argparse.ArgumentParser(parents=[parent_parser],
+                                           add_help=False)
+    group_mod_parser.add_argument('group')
+    group_mod_parser.add_argument('user', nargs="+")
+    access_mod_parser = argparse.ArgumentParser(parents=[parent_parser],
+                                           add_help=False)
+    access_mod_parser.add_argument('hostname')
+    access_mod_parser.add_argument('user', nargs="+")
     
     # main parser object
     parser = argparse.ArgumentParser()
-    
-    parser.add_argument('-c', '--config', nargs=1,
-                        help='path to a YAML-formatted configuration file')
-    
+    parser.add_argument('-c', '--config',
+        help='path to a YAML-formatted configuration file')
     subparser = parser.add_subparsers(dest='command')
     
     # get commands
-    parser_get = subparser.add_parser('get')
+    parser_get = subparser.add_parser('get', parents=[parent_parser])
     subparser_get = parser_get.add_subparsers(dest='get_command')
     parser_get_user = subparser_get.add_parser('user',
         parents=[user_parser],
@@ -115,15 +107,34 @@ if __name__ == '__main__':
     parser_remove_access = subparser_remove.add_parser('access')
     
     args = parser.parse_args()
-    
-    config_path = args.config[0]
+
+    config_path = args.config
     config = yaml.load(file(config_path, 'r'))
     lat = LDAPAdminTool(config)
 
+    out = None
+
+    def render_output(output):
+        print yaml.dump(output)
+
     if args.command == 'get':
         if args.get_command == 'user':
-            lat.get_user(*args.username)
+            out = lat.get_items('user', *args.username)
         elif args.get_command == 'group':
-            lat.get_group(*args.group)
+            out = lat.get_items('group', *args.group)
         elif args.get_command == 'access':
-            lat.get_access(*args.hostname)
+            out = lat.get_items('access', *args.hostname)
+    elif args.command == 'search':
+        pass
+    elif args.command == 'create':
+        pass
+    elif args.command == 'delete':
+        pass
+    elif args.command == 'insert':
+        pass
+    elif args.command == 'remove':
+        pass
+    else:
+        pass
+
+    render_output(out)
