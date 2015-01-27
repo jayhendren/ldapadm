@@ -28,7 +28,7 @@ def runLdapadm(*args, **kwargs):
                             stderr=subprocess.PIPE)
     result = proc.communicate()
     result = result + (proc.returncode,)
-    # if proc.returncode != 0: raise subprocess.CalledProcessError('', '')
+
     if (raise_on_error and proc.returncode != 0) or \
        (raise_on_success and proc.returncode == 0):
         msg = "Ldapadm unexpectedly exited with nonzero return code."
@@ -96,6 +96,9 @@ class LdapadmGetTests(LdapadmTest):
         for user in ('admin', 'manager', 'employee', 'helpdesk'):
             self.verifyCanGet('user', user)
 
+    def testMultipleGetUser(self):
+        pass
+
     def testSimpleGetUnixGroup(self):
 
         for group in ('bogus', 'totallynotagroup'):
@@ -109,3 +112,23 @@ class LdapadmGetTests(LdapadmTest):
             self.verifyCannotGet('access', access)
         for access in ('admins', 'managers', 'employees', 'helpdesk'):
             self.verifyCanGet('access', access)
+
+class LdapadmInsertTests(LdapadmTest):
+
+    def setUp(self):
+        # create group object with blank member attribute
+        super(LdapadmInsertTests, self).setUp()
+        self.obj_dn = 'cn=foobars,cn=groups,cn=accounts,' + \
+                      'dc=demo1,dc=freeipa,dc=org'
+        self.lom.createObj(self.obj_dn,
+                           {'objectClass': ['posixgroup'],
+                            'gidNumber'  : ['1234567890']})
+
+    def testInsertWithBadArgumentsReturnsError(self):
+        self.assertLdapadmFails('insert')
+        self.assertLdapadmFails('insert', 'boguscommand')
+        self.assertLdapadmFails('insert', 'group', 'bogusgroup')
+
+    def tearDown(self):
+        # remove group object
+        self.lom.deleteObj(self.obj_dn)
