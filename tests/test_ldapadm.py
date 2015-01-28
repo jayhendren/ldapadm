@@ -144,6 +144,12 @@ class LdapadmInsertTests(LdapadmTest):
             runLdapadm('insert', 'group', 'foobars', user)
             self.verifyGroupContainsUser(user)
 
+    def testInsertCanInsertMultipleUsers(self):
+        runLdapadm('insert', 'group', 'foobars',
+                   'employee', 'manager', 'helpdesk')
+        for user in ['helpdesk', 'employee', 'manager']:
+            self.verifyGroupContainsUser(user)
+
     def tearDown(self):
         # remove group object
         self.lom.deleteObj(self.obj_dn)
