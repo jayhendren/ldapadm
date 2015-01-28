@@ -74,6 +74,33 @@ class LdapadmTest(unittest.TestCase):
     def verifyCannotGet(self, type, search_term):
         self.assertLdapadmFails('get', type, search_term)
 
+    def createGroup(self, name):
+        dn = 'cn=%s,cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org' % name
+        self.lom.createObj(dn,
+                           {'objectClass': ['posixgroup', 'nestedGroup'],
+                            'gidNumber'  : ['1234567890']})
+        return dn
+
+    def removeGroup(self, name):
+        dn = 'cn=%s,cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org' % name
+        self.lom.deleteObj(dn)
+
+    def verifyGroupContainsUser(self, group_dn, user_name):
+        group = self.lom.getSingle(group_dn, 'objectClass=*')
+        user_dn = self.lom.getSingle(conf['user']['base'],
+                                     '%s=%s' %(conf['user']['identifier'],
+                                               user_name)
+                                    )[0]
+        self.assertIn(user_dn, group[1].get('member', []))
+
+    def verifyGroupDoesNotContainUser(self, group_dn, user_name):
+        group = self.lom.getSingle(group_dn, 'objectClass=*')
+        user_dn = self.lom.getSingle(conf['user']['base'],
+                                     '%s=%s' %(conf['user']['identifier'],
+                                               user_name)
+                                    )[0]
+        self.assertNotIn(user_dn, group[1].get('member', []))
+
 class LdapadmBasicTests(LdapadmTest):
 
     def testLdapadmCalledWithoutArgumentsReturnsError(self):
@@ -117,17 +144,12 @@ class LdapadmInsertTests(LdapadmTest):
 
     def setUp(self):
         # create group object with blank member attribute
+        self.obj_cn = 'foobars'
         super(LdapadmInsertTests, self).setUp()
-        self.obj_dn = 'cn=foobars,cn=groups,cn=accounts,' + \
-                      'dc=demo1,dc=freeipa,dc=org'
-        self.lom.createObj(self.obj_dn,
-                           {'objectClass': ['posixgroup', 'nestedGroup'],
-                            'gidNumber'  : ['1234567890']})
+        self.obj_dn = self.createGroup(self.obj_cn)
 
-    def verifyGroupContainsUser(self, user_name):
-        group = self.lom.getSingle('cn=groups,cn=accounts,' + 
-                                   'dc=demo1,dc=freeipa,dc=org',
-                                   'cn=foobars')
+    def verifyGroupContainsUser(self, group_dn, user_name):
+        group = self.lom.getSingle(group_dn, 'objectClass=*')
         user_dn = self.lom.getSingle(conf['user']['base'],
                                      '%s=%s' %(conf['user']['identifier'],
                                                user_name)
@@ -138,18 +160,69 @@ class LdapadmInsertTests(LdapadmTest):
         self.assertLdapadmFails('insert')
         self.assertLdapadmFails('insert', 'boguscommand')
         self.assertLdapadmFails('insert', 'group', 'bogusgroup')
+        self.assertLdapadmFails('insert', 'access', 'bogusgroup')
 
-    def testInsertCanInsertSingleUser(self):
+    def testInsertGroupCanInsertSingleUser(self):
         for user in ['helpdesk', 'employee', 'manager']:
-            runLdapadm('insert', 'group', 'foobars', user)
-            self.verifyGroupContainsUser(user)
+            self.verifyGroupDoesNotContainUser(self.obj_dn, user)
+            runLdapadm('insert', 'group', self.obj_cn, user)
+            self.verifyGroupContainsUser(self.obj_dn, user)
+
+    def testInsertAccessCanInsertSingleUser(self):
+        for user in ['helpdesk', 'employee', 'manager']:
+            self.verifyGroupDoesNotContainUser(self.obj_dn, user)
+            runLdapadm('insert', 'access', self.obj_cn, user)
+            self.verifyGroupContainsUser(self.obj_dn, user)
 
     def testInsertCanInsertMultipleUsers(self):
-        runLdapadm('insert', 'group', 'foobars',
+        users = ['helpdesk', 'employee', 'manager']
+        for user in users:
+            self.verifyGroupDoesNotContainUser(self.obj_dn, user)
+        runLdapadm('insert', 'group', self.obj_cn,
                    'employee', 'manager', 'helpdesk')
-        for user in ['helpdesk', 'employee', 'manager']:
-            self.verifyGroupContainsUser(user)
+        for user in users:
+            self.verifyGroupContainsUser(self.obj_dn, user)
 
     def tearDown(self):
         # remove group object
-        self.lom.deleteObj(self.obj_dn)
+        self.removeGroup(self.obj_cn)
+
+class LdapadmRemoveTests(LdapadmTest):
+
+    def setUp(self):
+        super(LdapadmRemoveTests, self).setUp()
+        self.obj_cn = 'bazbars'
+        self.obj_dn = self.createGroup(self.obj_cn)
+        self.users = ['helpdesk', 'employee', 'manager']
+        for u in self.users:
+            dn = self.lom.getSingle(conf['user']['base'],
+                "%s=%s" %(conf['user']['identifier'], u))[0]
+            self.lom.addAttr(conf['group']['base'],
+                self.obj_dn, 
+                'member',
+                dn)
+
+    def testRemoveGroupCanRemoveSingleUser(self):
+        for user in self.users:
+            self.verifyGroupContainsUser(self.obj_dn, user)
+            runLdapadm('remove', 'group', self.obj_cn, user)
+            self.verifyGroupDoesNotContainUser(self.obj_dn, user)
+
+    def testRemoveAccessCanRemoveSingleUser(self):
+        for user in ['helpdesk', 'employee', 'manager']:
+            self.verifyGroupContainsUser(self.obj_dn, user)
+            runLdapadm('remove', 'access', self.obj_cn, user)
+            self.verifyGroupDoesNotContainUser(self.obj_dn, user)
+
+    def testRemoveCanRemoveMultipleUsers(self):
+        users = ['helpdesk', 'employee', 'manager']
+        for user in users:
+            self.verifyGroupContainsUser(self.obj_dn, user)
+        runLdapadm('remove', 'group', self.obj_cn,
+                   'employee', 'manager', 'helpdesk')
+        for user in users:
+            self.verifyGroupDoesNotContainUser(self.obj_dn, user)
+
+    def tearDown(self):
+        # remove group object
+        self.removeGroup(self.obj_cn)

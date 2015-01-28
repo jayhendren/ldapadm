@@ -40,6 +40,16 @@ class LDAPAdminTool():
                          self.config[group_type].get('member', 'member'),
                          *user_dns)
 
+    def remove(self, group_type, group_name, *usernames):
+        group_dn = self.get_item(group_type, group_name)[0]
+        user_dns = []
+        for name in usernames:
+            user_dns.append(self.get_item('user', name)[0])
+        self.lom.rmAttr(self.config[group_type]['base'],
+                         group_dn, 
+                         self.config[group_type].get('member', 'member'),
+                         *user_dns)
+
 if __name__ == '__main__':
 
     # parent parser for arguments that are common to all sub-commands
@@ -62,7 +72,7 @@ if __name__ == '__main__':
     access_mod_parser = argparse.ArgumentParser(parents=[parent_parser],
                                            add_help=False)
     access_mod_parser.add_argument('hostname')
-    access_mod_parser.add_argument('user', nargs="+")
+    access_mod_parser.add_argument('username', nargs="+")
     
     # main parser object
     parser = argparse.ArgumentParser()
@@ -110,13 +120,15 @@ if __name__ == '__main__':
     parser_insert_group = subparser_insert.add_parser('group',
                               parents=[group_mod_parser])
     parser_insert_access = subparser_insert.add_parser('access',
-                              parents=[group_mod_parser])
+                              parents=[access_mod_parser])
     
     # remove commands
     parser_remove = subparser.add_parser('remove')
-    subparser_remove = parser_remove.add_subparsers()
-    parser_remove_group = subparser_remove.add_parser('group')
-    parser_remove_access = subparser_remove.add_parser('access')
+    subparser_remove = parser_remove.add_subparsers(dest='remove_command')
+    parser_remove_group = subparser_remove.add_parser('group',
+                              parents=[group_mod_parser])
+    parser_remove_access = subparser_remove.add_parser('access',
+                              parents=[access_mod_parser])
     
     args = parser.parse_args()
 
@@ -145,8 +157,13 @@ if __name__ == '__main__':
     elif args.command == 'insert':
         if args.insert_command == 'group':
             lat.insert('group', args.group, *args.username)
+        elif args.insert_command == 'access':
+            lat.insert('access', args.hostname, *args.username)
     elif args.command == 'remove':
-        pass
+        if args.remove_command == 'group':
+            lat.remove('group', args.group, *args.username)
+        elif args.remove_command == 'access':
+            lat.remove('access', args.hostname, *args.username)
     else:
         pass
 
