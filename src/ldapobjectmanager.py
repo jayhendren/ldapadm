@@ -48,17 +48,17 @@ class LDAPObjectManager():
             sfilter, attrlist=attrs))
 
     def addAttr(self, sbase, dn, attr, *values):
-        oldobj = self.getSingle(sbase, "dn=%s" %dn)
+        oldobj = self.getSingle(dn, 'objectClass=*')[1]
         newobj = copy.deepcopy(oldobj)
-        newobj[1][attr] = newobj[1][attr] + list(values)
+        newobj[attr] = newobj.get(attr, []) + list(values)
         ml = ldap.modlist.modifyModlist(oldobj, newobj)
         self._ldo.modify_ext_s(dn, ml)
 
     def rmAttr(self, sbase, dn, attr, *values):
-        oldobj = self.getSingle(sbase, "dn=%s" %dn)
+        oldobj = self.getSingle(dn, 'objectClass=*')[1]
         newobj = copy.deepcopy(oldobj)
         for v in values:
-            newobj[1][attr].remove(v)
+            newobj[attr].remove(v)
         ml = ldap.modlist.modifyModlist(oldobj, newobj)
         self._ldo.modify_ext_s(dn, ml)
 
