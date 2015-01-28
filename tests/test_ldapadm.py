@@ -121,13 +121,28 @@ class LdapadmInsertTests(LdapadmTest):
         self.obj_dn = 'cn=foobars,cn=groups,cn=accounts,' + \
                       'dc=demo1,dc=freeipa,dc=org'
         self.lom.createObj(self.obj_dn,
-                           {'objectClass': ['posixgroup'],
+                           {'objectClass': ['posixgroup', 'nestedGroup'],
                             'gidNumber'  : ['1234567890']})
+
+    def verifyGroupContainsUser(self, user_name):
+        group = self.lom.getSingle('cn=groups,cn=accounts,' + 
+                                   'dc=demo1,dc=freeipa,dc=org',
+                                   'cn=foobars')
+        user_dn = self.lom.getSingle(conf['user']['base'],
+                                     '%s=%s' %(conf['user']['identifier'],
+                                               user_name)
+                                    )[0]
+        self.assertIn(user_dn, group[1]['member'])
 
     def testInsertWithBadArgumentsReturnsError(self):
         self.assertLdapadmFails('insert')
         self.assertLdapadmFails('insert', 'boguscommand')
         self.assertLdapadmFails('insert', 'group', 'bogusgroup')
+
+    def testInsertCanInsertSingleUser(self):
+        for user in ['helpdesk', 'employee', 'manager']:
+            runLdapadm('insert', 'group', 'foobars', user)
+            self.verifyGroupContainsUser(user)
 
     def tearDown(self):
         # remove group object

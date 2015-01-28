@@ -8,13 +8,13 @@ class LDAPAdminTool():
 
     def __init__(self, config):
         self.config = config
-        self.ldo = LDAPObjectManager(self.config['uri'], auth.simple,
+        self.lom = LDAPObjectManager(self.config['uri'], auth.simple,
                                 user=self.config['username'],
                                 password=self.config['password'],
                                 **self.config.get('options', {}))
     
     def get_item(self, item_type, search_term, attrs=None):
-        return self.ldo.getSingle(self.config[item_type]['base'],
+        return self.lom.getSingle(self.config[item_type]['base'],
             "%s=%s" %(self.config[item_type]['identifier'], search_term),
             attrs=attrs)
 
@@ -29,6 +29,16 @@ class LDAPAdminTool():
                     obj[1][attr] = None
             output_obj[t] = obj[1]
         return output_obj
+
+    def insert(self, group_type, group_name, *usernames):
+        group_dn = self.get_item(group_type, group_name)[0]
+        user_dns = []
+        for name in usernames:
+            user_dns.append(self.get_item('user', name)[0])
+        self.lom.addAttr(self.config[group_type]['base'],
+                         group_dn, 
+                         self.config[group_type].get('member', 'member'),
+                         *user_dns)
 
 if __name__ == '__main__':
 
@@ -48,7 +58,7 @@ if __name__ == '__main__':
     group_mod_parser = argparse.ArgumentParser(parents=[parent_parser],
                                            add_help=False)
     group_mod_parser.add_argument('group')
-    group_mod_parser.add_argument('user', nargs="+")
+    group_mod_parser.add_argument('username', nargs="+")
     access_mod_parser = argparse.ArgumentParser(parents=[parent_parser],
                                            add_help=False)
     access_mod_parser.add_argument('hostname')
@@ -96,9 +106,11 @@ if __name__ == '__main__':
     
     # insert commands
     parser_insert = subparser.add_parser('insert')
-    subparser_insert = parser_insert.add_subparsers()
-    parser_insert_group = subparser_insert.add_parser('group')
-    parser_insert_access = subparser_insert.add_parser('access')
+    subparser_insert = parser_insert.add_subparsers(dest='insert_command')
+    parser_insert_group = subparser_insert.add_parser('group',
+                              parents=[group_mod_parser])
+    parser_insert_access = subparser_insert.add_parser('access',
+                              parents=[group_mod_parser])
     
     # remove commands
     parser_remove = subparser.add_parser('remove')
@@ -131,7 +143,8 @@ if __name__ == '__main__':
     elif args.command == 'delete':
         pass
     elif args.command == 'insert':
-        pass
+        if args.insert_command == 'group':
+            lat.insert('group', args.group, *args.username)
     elif args.command == 'remove':
         pass
     else:
