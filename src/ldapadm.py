@@ -12,11 +12,20 @@ class LDAPAdminTool():
                                 user=self.config['username'],
                                 password=self.config['password'],
                                 **self.config.get('options', {}))
+
+    def build_query(self, fields, values):
+        return "(|%s)" % "".join(["(%s=%s)" % (f, v) for v in values \
+                                  for f in fields])
     
     def get_item(self, item_type, search_term, attrs=None):
         return self.lom.getSingle(self.config[item_type]['base'],
             "%s=%s" %(self.config[item_type]['identifier'], search_term),
             attrs=attrs)
+
+    def add_missing_attributes(self, object, item_type):
+        for attr in self.config[item_type].get('display', []):
+            if object[1].get(attr) is None:
+                object[1][attr] = None
 
     def get_items(self, item_type, *search_terms):
         output_obj = {}
@@ -24,10 +33,21 @@ class LDAPAdminTool():
             obj = self.get_item(item_type, t,
                                 attrs=self.config[item_type].get('display'))
             # add blank attrs for attrs in display list that aren't on object
-            for attr in self.config[item_type].get('display', []):
-                if obj[1].get(attr) is None:
-                    obj[1][attr] = None
+            self.add_missing_attributes(obj, item_type)
             output_obj[t] = obj[1]
+        return output_obj
+
+    def search(self, item_type, *search_terms):
+        output_obj = {}
+        for t in search_terms:
+            query = self.build_query(self.config[item_type]['search'],
+                                     ['%s*' % t])
+            results = self.lom.getMultiple(self.config[item_type]['base'],
+                query,
+                attrs=self.config[item_type].get('display'))
+            for obj in results:
+                self.add_missing_attributes(obj, item_type)
+            output_obj[t] = [list(r) for r in results]
         return output_obj
 
     def insert(self, group_type, group_name, *usernames):
@@ -95,10 +115,16 @@ if __name__ == '__main__':
     
     # search commands
     parser_search = subparser.add_parser('search')
-    subparser_search = parser_search.add_subparsers()
-    parser_search_user = subparser_search.add_parser('user')
-    parser_search_group = subparser_search.add_parser('group')
-    parser_search_access = subparser_search.add_parser('access')
+    subparser_search = parser_search.add_subparsers(dest='search_command')
+    parser_search_user = subparser_search.add_parser('user',
+        parents=[user_parser],
+        description='search user description')
+    parser_search_group = subparser_search.add_parser('group',
+        parents=[group_parser],
+        description='search group description')
+    parser_search_access = subparser_search.add_parser('access',
+        parents=[access_parser],
+        description='search access description')
     
     # create commands
     parser_create = subparser.add_parser('create')
@@ -149,7 +175,12 @@ if __name__ == '__main__':
         elif args.get_command == 'access':
             out = lat.get_items('access', *args.hostname)
     elif args.command == 'search':
-        pass
+        if args.search_command == 'user':
+            out = lat.search('user', *args.username)
+        elif args.search_command == 'group':
+            out = lat.search('group', *args.group)
+        elif args.search_command == 'access':
+            out = lat.search('access', *args.hostname)
     elif args.command == 'create':
         pass
     elif args.command == 'delete':

@@ -53,26 +53,11 @@ class LdapadmTest(unittest.TestCase):
     def assertLdapadmFails(self, *args, **kwargs):
         runLdapadm(*args, raise_on_success=True, **kwargs)
 
-    def getOutput(self, type, search_term):
-        return runLdapadm('get', type, search_term)
-
-    def getObject(self, type, search_term):
-        return self.lom.getSingle(conf[type]['base'],
-            '%s=%s' %(conf[type]['identifier'], search_term))
-
     def verifyOutput(self, output, object, type, search_term):
         output_obj = yaml.load(output[0])[search_term]
         filtered_obj = {k:object[1].get(k) \
                         for k in conf[type]['display']}
         self.assertEqual(output_obj, filtered_obj)
-
-    def verifyCanGet(self, type, search_term):
-        output = self.getOutput(type, search_term)
-        object = self.getObject(type, search_term)
-        self.verifyOutput(output, object, type, search_term)
-
-    def verifyCannotGet(self, type, search_term):
-        self.assertLdapadmFails('get', type, search_term)
 
     def createGroup(self, name):
         dn = 'cn=%s,cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org' % name
@@ -112,6 +97,21 @@ class LdapadmBasicTests(LdapadmTest):
 
 class LdapadmGetTests(LdapadmTest):
 
+    def getOutput(self, type, search_term):
+        return runLdapadm('get', type, search_term)
+
+    def getObject(self, type, search_term):
+        return self.lom.getSingle(conf[type]['base'],
+            '%s=%s' %(conf[type]['identifier'], search_term))
+
+    def verifyCanGet(self, type, search_term):
+        output = self.getOutput(type, search_term)
+        object = self.getObject(type, search_term)
+        self.verifyOutput(output, object, type, search_term)
+
+    def verifyCannotGet(self, type, search_term):
+        self.assertLdapadmFails('get', type, search_term)
+
     def testGetWithBadArgumentsReturnsError(self):
         self.assertLdapadmFails('get')
         self.assertLdapadmFails('get', 'bogus')
@@ -139,6 +139,17 @@ class LdapadmGetTests(LdapadmTest):
             self.verifyCannotGet('access', access)
         for access in ('admins', 'managers', 'employees', 'helpdesk'):
             self.verifyCanGet('access', access)
+
+class LdapadmSearchTests(LdapadmTest):
+
+    def testSearchUser(self):
+        output = yaml.load(runLdapadm('search', 'user', 'Test')[0])
+        expected_cns = [
+            'Test Employee',
+            'Test Helpdesk',
+            'Test Manager']
+        cns = [r[1]['cn'][0] for r in output['Test']]
+        self.assertItemsEqual(cns, expected_cns)
 
 class LdapadmInsertTests(LdapadmTest):
 
