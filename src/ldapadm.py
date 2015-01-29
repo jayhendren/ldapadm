@@ -34,7 +34,7 @@ class LDAPAdminTool():
                                 attrs=self.config[item_type].get('display'))
             # add blank attrs for attrs in display list that aren't on object
             self.add_missing_attributes(obj, item_type)
-            output_obj[t] = obj[1]
+            output_obj[t] = list(obj)
         return output_obj
 
     def search(self, item_type, *search_terms):
