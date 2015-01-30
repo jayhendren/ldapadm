@@ -1,43 +1,22 @@
 # uri:             # uri of the ldap server
 # options:         # dictionary of ldap options
-# user:
+# type:
 #   base:          # search base
 #   scope:         # search scope [base, onelevel, subtree] default: subtree
+#   member:        # attribute that contains member DNs.
+#                    used when adding/removing membership. default: member
+#   member_oid:    # Active Directory OID to add to member query
 #   member_of:     # attribute that contains membership DNs.
 #                    used when searching membership. default: memberOf
 #   member_of_oid: # Active Directory OID to add to member_of query
 #   schema:        # schema for new objects
 #   identifier:    # attribute to look in for "get" commands. default: cn
-#   search:        # attributes to look in for "search" commands. default: [cn, sn]
-#   filter:        # apply this search filter when retrieving users
-#   display:       # attributes to display when retrieving users/groups.
-#                  # if not given, all attributes will be printed
-# group:
-#   base:
-#   scope:
-#   member:       # attribute that contains member DNs.
-#                    used when adding/removing membership. default: member
-#   member_oid:    # Active Directory OID to add to member query
-#   schema:
-#   identifier:
-#   search:        
 #   prefix:        # to get the cn, prepend this to the identifier value in all transactions
 #   suffix:        # to get the cn, append this to the identifier value in all transactions
-#   filter:
-#   gid:           # attribute that contains unix gid number. default: gidNumber
-#   display:
-# access:
-#   base:
-#   scope:
-#   member:
-#   member_oid:    # Active Directory OID to add to member query
-#   schema:
-#   identifier:
-#   search:                         
-#   prefix:
-#   suffix:                         
-#   filter:
-#   display:
+#   search:        # attributes to look in for "search" commands. default: [cn, sn]
+#   filter:        # apply this search filter to get and search commands
+#   display:       # attributes to display when retrieving users/groups.
+#                  # if not given, all attributes will be printed
 
 # these two are only allowed in the test configuration
 username: 'uid=admin,cn=users,cn=accounts,dc=demo1,dc=freeipa,dc=org'
