@@ -29,6 +29,14 @@ SCOPE=ldap.SCOPE_SUBTREE # hardcoded for now; to be moved to configuration
 
 class LDAPObjectManager():
 
+    """
+    The LDAPObjectManager class manages an LDAP connection and exposes
+    methods to perform common LDAP operations over that connection.
+
+    LDAPObjectManager accepts keyword arguments that are passed on to
+    the underlying LDAP object.
+    """
+
     def __init__(self, uri, authtype, user=None, password=None, **kwargs):
         # not sure that I like hardcoding the list of supported auth types...
         if not authtype in [auth.kerb, auth.simple, auth.noauth]:
@@ -89,6 +97,14 @@ class LDAPObjectManager():
         self._ldo.delete_ext_s(dn)
 
 class LDAPAdminTool():
+
+    """
+    The LDAPAdminTool class exposes methods to perform common LDAP
+    administrative tasks.  It accepts a configuration object as the sole
+    argument to the constructor function.  It does not directly manage
+    an LDAP connection or LDAP object; this task is passed off to an
+    LDAPObjectManager instance.
+    """
 
     def __init__(self, config):
         self.config = config
