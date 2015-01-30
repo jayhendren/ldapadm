@@ -3,7 +3,7 @@ import subprocess
 import yaml
 import unittest
 import ldap
-from src.ldapobjectmanager import LDAPObjectManager, auth
+from src.ldapadm import LDAPObjectManager, auth
 
 proj_root_dir = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
 conf_path = os.path.join(proj_root_dir, 'tests/ldapadm-test.conf.yaml')
@@ -62,37 +62,37 @@ class LdapadmTest(unittest.TestCase):
 
     def createGroup(self, name):
         dn = 'cn=%s,cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org' % name
-        self.lom.createObj(dn,
+        self.lom.create_object(dn,
                            {'objectClass': ['posixgroup', 'nestedGroup'],
                             'gidNumber'  : ['1234567890']})
         return dn
 
     def removeGroup(self, name):
         dn = 'cn=%s,cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org' % name
-        self.lom.deleteObj(dn)
+        self.lom.delete_object(dn)
 
     def verifyGroupContainsUser(self, group_dn, user_name):
-        group = self.lom.getSingle(group_dn, 'objectClass=*')
-        user_dn = self.lom.getSingle(conf['user']['base'],
+        group = self.lom.get_single(group_dn, 'objectClass=*')
+        user_dn = self.lom.get_single(conf['user']['base'],
                                      '%s=%s' %(conf['user']['identifier'],
                                                user_name)
                                     )[0]
         self.assertIn(user_dn, group[1].get('member', []))
 
     def verifyGroupDoesNotContainUser(self, group_dn, user_name):
-        group = self.lom.getSingle(group_dn, 'objectClass=*')
-        user_dn = self.lom.getSingle(conf['user']['base'],
+        group = self.lom.get_single(group_dn, 'objectClass=*')
+        user_dn = self.lom.get_single(conf['user']['base'],
                                      '%s=%s' %(conf['user']['identifier'],
                                                user_name)
                                     )[0]
         self.assertNotIn(user_dn, group[1].get('member', []))
 
     def verifyDoesExist(self, dn):
-        self.assertEqual(self.lom.getSingle(dn, 'objectClass=*')[0], dn)
+        self.assertEqual(self.lom.get_single(dn, 'objectClass=*')[0], dn)
 
     def verifyDoesNotExist(self, dn):
         self.assertRaises(ldap.NO_SUCH_OBJECT,
-                          self.lom.getMultiple,
+                          self.lom.get_multiple,
                           dn, 
                           'objectClass=*')
 
@@ -111,7 +111,7 @@ class LdapadmGetTests(LdapadmTest):
         return runLdapadm('get', type, search_term)
 
     def getObject(self, type, search_term):
-        return self.lom.getSingle(conf[type]['base'],
+        return self.lom.get_single(conf[type]['base'],
             '%s=%s' %(conf[type]['identifier'], search_term))
 
     def verifyCanGet(self, type, search_term):
@@ -190,8 +190,8 @@ class LdapadmInsertTests(LdapadmTest):
         self.obj_dn = self.createGroup(self.obj_cn)
 
     def verifyGroupContainsUser(self, group_dn, user_name):
-        group = self.lom.getSingle(group_dn, 'objectClass=*')
-        user_dn = self.lom.getSingle(conf['user']['base'],
+        group = self.lom.get_single(group_dn, 'objectClass=*')
+        user_dn = self.lom.get_single(conf['user']['base'],
                                      '%s=%s' %(conf['user']['identifier'],
                                                user_name)
                                     )[0]
@@ -236,9 +236,9 @@ class LdapadmRemoveTests(LdapadmTest):
         self.obj_dn = self.createGroup(self.obj_cn)
         self.users = ['helpdesk', 'employee', 'manager']
         for u in self.users:
-            dn = self.lom.getSingle(conf['user']['base'],
+            dn = self.lom.get_single(conf['user']['base'],
                 "%s=%s" %(conf['user']['identifier'], u))[0]
-            self.lom.addAttr(conf['group']['base'],
+            self.lom.add_attribute(conf['group']['base'],
                 self.obj_dn, 
                 'member',
                 dn)

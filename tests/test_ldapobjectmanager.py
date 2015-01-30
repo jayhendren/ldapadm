@@ -1,7 +1,7 @@
 import mock
 import unittest
-import src.ldapobjectmanager
-from src.ldapobjectmanager import LDAPObjectManager, auth
+import src.ldapadm
+from src.ldapadm import LDAPObjectManager, auth
 
 uri = 'ldaps://foo.bar:636'
 
@@ -14,7 +14,7 @@ def reference():
 class LOMTestCase(unittest.TestCase):
 
     def setUp(self):
-        patcher = mock.patch('src.ldapobjectmanager.ldap', autospec=True)
+        patcher = mock.patch('src.ldapadm.ldap', autospec=True)
         self.mock_ldap = patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -80,39 +80,39 @@ class TestLOMGetSingle(LOMMethodTestCase):
     def testGetSingleThrowsExceptionForNoResultsFound(self):
         self.ldo.search_ext_s.return_value = []
         with self.assertRaises(RuntimeError):
-            self.lom.getSingle("", "")
+            self.lom.get_single("", "")
 
     def testGetSingleThrowsExceptionForOnlyReferencesFound(self):
         # sometimes references are included in the result
         # these have no DN and should be discarded from the result
         self.ldo.search_ext_s.return_value = [(None, ['ldaps://foo.bar/cn=ref'])]
         with self.assertRaises(RuntimeError):
-            self.lom.getSingle("", "")
+            self.lom.get_single("", "")
 
     def testGetSingleSuccessfullyReturnsExactlyOneObject(self):
         alice = person('alice')
         self.ldo.search_ext_s.return_value = [alice]
-        self.assertEqual(alice, self.lom.getSingle("", "name=alice"))
+        self.assertEqual(alice, self.lom.get_single("", "name=alice"))
 
     def testGetSingleSuccessfullyReturnsExactlyOneObject(self):
         bob = person('bob')
         self.ldo.search_ext_s.return_value = [bob, reference()]
-        self.assertEqual(bob, self.lom.getSingle("", "name=bob"))
+        self.assertEqual(bob, self.lom.get_single("", "name=bob"))
 
     def testGetSingleThrowsExceptionWhenMultipleResultsFound(self):
         expectedresult = [person('fred'), person('george')]
         self.ldo.search_ext_s.return_value = expectedresult
         with self.assertRaises(RuntimeError):
-            self.lom.getSingle("", "")
+            self.lom.get_single("", "")
 
-        self.assertEqual(expectedresult, self.lom.getMultiple("", ""))
+        self.assertEqual(expectedresult, self.lom.get_multiple("", ""))
 
 class TestLOMGetMultiple(LOMMethodTestCase):
 
     def testGetMultipleSuccessfullyReturnsMultipleResults(self):
         expectedresult = [person('fred'), person('george')]
         self.ldo.search_ext_s.return_value = expectedresult
-        self.assertEqual(expectedresult, self.lom.getMultiple("", ""))
+        self.assertEqual(expectedresult, self.lom.get_multiple("", ""))
 
     def testGetMultipleRemovesReferenceFromResult(self):
         susie = person('susie')
@@ -121,7 +121,7 @@ class TestLOMGetMultiple(LOMMethodTestCase):
             ref, susie, susie, ref,
             ref, susie, susie, ref, susie, ref
         ]
-        actualresult = self.lom.getMultiple("", "name=susie")
+        actualresult = self.lom.get_multiple("", "name=susie")
         self.assertEqual([susie] * 5, actualresult)
 
 class TestLOMAddAttr(LOMMethodTestCase):
@@ -132,7 +132,7 @@ class TestLOMAddAttr(LOMMethodTestCase):
         modlist = mock.MagicMock()
         self.mock_ldap.modlist.modifyModlist.return_value = modlist
         self.ldo.search_ext_s.return_value = [oldobj]
-        self.lom.addAttr("", self.dn, self.attr, self.value2)
+        self.lom.add_attribute("", self.dn, self.attr, self.value2)
         self.mock_ldap.modlist.modifyModlist.assert_called_once_with(oldobj[1],
                                                                      newobj[1])
         self.ldo.modify_ext_s.assert_called_once_with(self.dn, modlist)
@@ -145,7 +145,7 @@ class TestLOMRmAttr(LOMMethodTestCase):
         modlist = mock.MagicMock()
         self.mock_ldap.modlist.modifyModlist.return_value = modlist
         self.ldo.search_ext_s.return_value = [oldobj]
-        self.lom.rmAttr("", self.dn, self.attr, self.value2)
+        self.lom.remove_attribute("", self.dn, self.attr, self.value2)
         self.mock_ldap.modlist.modifyModlist.assert_called_once_with(oldobj[1],
                                                                      newobj[1])
         self.ldo.modify_ext_s.assert_called_once_with(self.dn, modlist)
@@ -157,7 +157,7 @@ class TestLOMCreateObj(LOMMethodTestCase):
         # this behavior is because downstream LDAP module only raises an
         # unhelpful, generic error if the attributes list is empty
         with self.assertRaises(ValueError):
-            self.lom.createObj('cn=bogus', {})
+            self.lom.create_object('cn=bogus', {})
 
     def testCreateObjCallsAddModlistAndAddExtS(self):
         dn = 'cn=awesome,cn=users,dc=ldap,dc=test'
@@ -166,7 +166,7 @@ class TestLOMCreateObj(LOMMethodTestCase):
                  'gid'        : '123456'}
         modlist = mock.MagicMock()
         self.mock_ldap.modlist.addModlist.return_value = modlist
-        self.lom.createObj(dn, attrs)
+        self.lom.create_object(dn, attrs)
         self.mock_ldap.modlist.addModlist.assert_called_once_with(attrs)
         self.ldo.add_ext_s.assert_called_once_with(dn, modlist)
 
@@ -176,5 +176,5 @@ class TestLOMDeleteObj(LOMMethodTestCase):
         # I suppose I probably shouldn't test this since it's just a wrapper
         # method, but I'm adding the test case for consistency's sake
         dn = 'cn=deleteme'
-        self.lom.deleteObj(dn)
+        self.lom.delete_object(dn)
         self.ldo.delete_ext_s.assert_called_once_with(dn)
