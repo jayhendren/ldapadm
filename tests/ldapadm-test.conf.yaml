@@ -19,6 +19,7 @@
 #                  # if not given, all attributes will be printed
 
 # these two are only allowed in the test configuration
+auth_type: simple
 username: 'uid=admin,cn=users,cn=accounts,dc=demo1,dc=freeipa,dc=org'
 password: 'Secret123'
 uri: "ldap://ipa.demo1.freeipa.org"

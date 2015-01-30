@@ -108,11 +108,20 @@ class LDAPAdminTool():
 
     def __init__(self, config):
         self.config = config
+        lom_kwargs = self.config.get('options', {})
+        auth_str = self._config_get("auth_type", default="noauth")
+        auth_type = None
+        if auth_str == "noauth":
+            auth_type = auth.noauth
+        elif auth_str == "kerb":
+            auth_type = auth.kerb
+        elif auth_str == "simple":
+            auth_type = auth.simple
+            lom_kwargs['user'] = self._config_get('username')
+            lom_kwargs['password'] = self._config_get('password')
         self._lom = LDAPObjectManager(self._config_get('uri'),
-                                      auth.simple,
-                                      user=self._config_get('username'),
-                                      password=self._config_get('password'),
-                                      **self.config.get('options', {}))
+                                      auth_type,
+                                      **lom_kwargs)
 
     def _config_get(self, *args, **kwargs):
         default = kwargs.get('default')
@@ -209,31 +218,93 @@ if __name__ == '__main__':
         return argparse.ArgumentParser(add_help=False)
 
     single_type_parser = get_new_parser()
-    single_type_parser.add_argument('object_type')
-    single_type_parser.add_argument('object_name', nargs="+")
+    single_type_parser.add_argument('object_type', help="""
+        Type, as specified in configuration, of the object to perform an
+        action on.""")
+    single_type_parser.add_argument('object_name', nargs="+", help="""
+        Name of the object to perform an action on.  The name will be searched
+        for in the the attribute specified by the "identifier" field for this 
+        object's type as provided by configuration.""")
 
     double_type_parser = get_new_parser()
-    double_type_parser.add_argument('group_object_type')
-    double_type_parser.add_argument('group_object_name')
-    double_type_parser.add_argument('member_object_type')
-    double_type_parser.add_argument('member_object_name', nargs="+")
+    double_type_parser.add_argument('group_object_type', help="""
+        Type, as specified in configuration, of the group object to perform an
+        action on.""")
+    double_type_parser.add_argument('group_object_name', help="""
+        Name of the group to perform an action on. The name will be searched
+        for in the the attribute specified by the "identifier" field for this 
+        object's type as provided by configuration.""")
+    double_type_parser.add_argument('member_object_type', help="""
+        Type, as specified in configuration, of the member object(s).""")
+    double_type_parser.add_argument('member_object_name', nargs="+", help="""
+        Name of the member(s) to perform an action on. The name will be
+        searched for in the the attribute specified by the "identifier" field
+        for this object's type as provided by configuration.""")
     
-    # main parser object
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="""
+        A command-line tool to perform common LDAP administrative tasks,
+        such as fetching objects and their attributes, adding and removing
+        members from a group, and creating and deleting objects. Online
+        documentation is available at:
+
+        https://stash.int.colorado.edu/projects/SIS/repos/ldapadm/browse""",
+        epilog="""
+        For help on a specific command, run "%(prog)s <command> -h".""" )
+
     parser.add_argument('-c', '--config',
-        help='path to a YAML-formatted configuration file')
+        default='/etc/ldapadm.conf.yaml',
+        help="""Path to a YAML-formatted configuration file.  See the online
+                documentation for more information on the configuration file
+                format.  Default path is %(default)s""")
+
     parser.add_argument('-o', '--options',
         action='append',
         default=[],
-        help='YAML-formatted configuration supplied on the command line')
+        help="""YAML-formatted configuration supplied on the command line.
+                Format of command-line-supplied configuration is identical to
+                that of the configuration file.  Any configuration options
+                supplied on the command line will override settings provided
+                in the configuration file.""")
+
+    parser.add_argument('-r', '--pretty',
+        action='store_true',
+        help="""Print pretty, colorful, easy-to-read output instead of
+                YAML-formatted output.""")
+
+    auth_group = parser.add_mutually_exclusive_group()
+
+    auth_group.add_argument('-k', '--kerb',
+        action='store_true',
+        help='Use kerberos authentication.')
+
+    auth_group.add_argument('-u', '--username',
+        help="""Username to be used for simple authentication. If present,
+                simple authentication will be used.""")
+
+    parser.add_argument('-p', '--password',
+        help='Password to be used for simple authentication.')
+
+    auth_group.add_argument('-n', '--no-auth',
+        action='store_true',
+        help='Do not use authentication. Attempt an anonymous bind.')
+
     subparser = parser.add_subparsers(dest='command')
     
-    parser_get = subparser.add_parser(get, parents=[single_type_parser])
-    parser_search = subparser.add_parser(search, parents=[single_type_parser])
-    parser_create = subparser.add_parser(create, parents=[single_type_parser])
-    parser_delete = subparser.add_parser(delete, parents=[single_type_parser])
-    parser_insert = subparser.add_parser(insert, parents=[double_type_parser])
-    parser_remove = subparser.add_parser(remove, parents=[double_type_parser])
+    parser_get = subparser.add_parser(get, parents=[single_type_parser],
+        description="""Retrieve a single entry per name argument provided.
+                       It is considered an error if not exactly one object
+                       is retrieved per name argument.""")
+    parser_search = subparser.add_parser(search, parents=[single_type_parser],
+        description="""Perform a search query.  Zero or more results may be
+                       returned per query.""")
+    parser_create = subparser.add_parser(create, parents=[single_type_parser],
+        description="""Create a new object.""")
+    parser_delete = subparser.add_parser(delete, parents=[single_type_parser],
+        description="""Delete an existing object.""")
+    parser_insert = subparser.add_parser(insert, parents=[double_type_parser],
+        description="""Insert members (of any type) into a group object.""")
+    parser_remove = subparser.add_parser(remove, parents=[double_type_parser],
+        description="""Remove members (of any type) from a group object.""")
 
     args = parser.parse_args()
 
@@ -242,6 +313,15 @@ if __name__ == '__main__':
     for o in args.options:
         c = yaml.load(o)
         recursive_merge(c, config)
+
+    if args.kerb:
+        config['auth_type'] = 'kerb'
+    elif args.username is not None:
+        config['auth_type'] = 'simple'
+        config['username'] = args.username
+        config['password'] = args.password
+    elif args.no_auth:
+        config['auth_type'] = 'noauth'
 
     lat = LDAPAdminTool(config)
 
