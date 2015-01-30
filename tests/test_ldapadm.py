@@ -206,20 +206,20 @@ class LdapadmInsertTests(LdapadmTest):
     def testInsertGroupCanInsertSingleUser(self):
         for user in ['helpdesk', 'employee', 'manager']:
             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-            runLdapadm('insert', 'group', self.obj_cn, user)
+            runLdapadm('insert', 'group', self.obj_cn, 'user', user)
             self.verifyGroupContainsUser(self.obj_dn, user)
 
     def testInsertAccessCanInsertSingleUser(self):
         for user in ['helpdesk', 'employee', 'manager']:
             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-            runLdapadm('insert', 'access', self.obj_cn, user)
+            runLdapadm('insert', 'access', self.obj_cn, 'user', user)
             self.verifyGroupContainsUser(self.obj_dn, user)
 
     def testInsertCanInsertMultipleUsers(self):
         users = ['helpdesk', 'employee', 'manager']
         for user in users:
             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-        runLdapadm('insert', 'group', self.obj_cn,
+        runLdapadm('insert', 'group', self.obj_cn, 'user',
                    'employee', 'manager', 'helpdesk')
         for user in users:
             self.verifyGroupContainsUser(self.obj_dn, user)
@@ -246,20 +246,20 @@ class LdapadmRemoveTests(LdapadmTest):
     def testRemoveGroupCanRemoveSingleUser(self):
         for user in self.users:
             self.verifyGroupContainsUser(self.obj_dn, user)
-            runLdapadm('remove', 'group', self.obj_cn, user)
+            runLdapadm('remove', 'group', self.obj_cn, 'user', user)
             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
 
     def testRemoveAccessCanRemoveSingleUser(self):
         for user in ['helpdesk', 'employee', 'manager']:
             self.verifyGroupContainsUser(self.obj_dn, user)
-            runLdapadm('remove', 'access', self.obj_cn, user)
+            runLdapadm('remove', 'access', self.obj_cn, 'user', user)
             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
 
     def testRemoveCanRemoveMultipleUsers(self):
         users = ['helpdesk', 'employee', 'manager']
         for user in users:
             self.verifyGroupContainsUser(self.obj_dn, user)
-        runLdapadm('remove', 'group', self.obj_cn,
+        runLdapadm('remove', 'group', self.obj_cn, 'user',
                    'employee', 'manager', 'helpdesk')
         for user in users:
             self.verifyGroupDoesNotContainUser(self.obj_dn, user)

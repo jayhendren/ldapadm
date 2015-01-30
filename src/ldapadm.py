@@ -4,19 +4,6 @@ import argparse
 import yaml
 from ldapobjectmanager import LDAPObjectManager, auth
 
-# object types
-user   = 'user'
-group  = 'group'
-access = 'access'
-
-# commands
-get    = 'get'
-search = 'search'
-create = 'create'
-delete = 'delete'
-insert = 'insert'
-remove = 'remove'
-
 def recursive_merge(a, b):
     """Merge nested dictionary objects. a will be merged into b"""
     for key in a:
@@ -100,11 +87,12 @@ class LDAPAdminTool():
         dn = self._get_dn(item_type, name)
         self.lom.deleteObj(dn)
 
-    def _insert_or_remove(self, action, group_type, group_name, *usernames):
+    def _insert_or_remove(self, action, group_type, group_name,
+                          member_type, *member_names):
         group_dn = self._get_single(group_type, group_name)[0]
-        user_dns = []
-        for name in usernames:
-            user_dns.append(self._get_single(user, name)[0])
+        member_dns = []
+        for name in member_names:
+            member_dns.append(self._get_single(member_type, name)[0])
         if action == insert:
             func = self.lom.addAttr
         elif action == remove:
@@ -112,7 +100,7 @@ class LDAPAdminTool():
         func(self._config_get(group_type, 'base'),
              group_dn, 
              self._config_get(group_type, 'member', default='member'),
-             *user_dns)
+             *member_dns)
 
     def insert(self, *args, **kwargs):
         self._insert_or_remove(insert, *args, **kwargs)
@@ -122,32 +110,29 @@ class LDAPAdminTool():
 
 if __name__ == '__main__':
 
-    # parent parser for arguments that are common to all sub-commands
+    # command literals
+    get    = 'get'
+    search = 'search'
+    create = 'create'
+    delete = 'delete'
+    insert = 'insert'
+    remove = 'remove'
+
+    # parent parser holds arguments that are common to all sub-commands
     parent_parser = argparse.ArgumentParser(add_help=False)
-    
-    # parent parser for user, group, access, etc. sub-commands
-    arg1 = 'arg1'
-    arg2 = 'arg2'
 
     def get_new_parser():
         return argparse.ArgumentParser(parents=[parent_parser], add_help=False)
 
-    user_parser = get_new_parser()
-    user_parser.add_argument(arg1, nargs="+", metavar='username')
+    single_type_parser = get_new_parser()
+    single_type_parser.add_argument('object_type')
+    single_type_parser.add_argument('object_name', nargs="+")
 
-    group_parser = get_new_parser()
-    group_parser.add_argument(arg1, nargs="+", metavar='group')
-
-    access_parser = get_new_parser()
-    access_parser.add_argument(arg1, nargs="+", metavar='hostname')
-
-    group_mod_parser = get_new_parser()
-    group_mod_parser.add_argument(arg1, metavar='group')
-    group_mod_parser.add_argument(arg2, nargs="+", metavar='username')
-
-    access_mod_parser = get_new_parser()
-    access_mod_parser.add_argument(arg1, metavar='hostname')
-    access_mod_parser.add_argument(arg2, nargs="+", metavar='username')
+    double_type_parser = get_new_parser()
+    double_type_parser.add_argument('group_object_type')
+    double_type_parser.add_argument('group_object_name')
+    double_type_parser.add_argument('member_object_type')
+    double_type_parser.add_argument('member_object_name', nargs="+")
     
     # main parser object
     parser = argparse.ArgumentParser()
@@ -159,78 +144,15 @@ if __name__ == '__main__':
         help='YAML-formatted configuration supplied on the command line')
     subparser = parser.add_subparsers(dest='command')
     
-    # get commands
-    parser_get = subparser.add_parser(get, parents=[parent_parser])
-    subparser_get = parser_get.add_subparsers(dest='get_command')
-    parser_get_user = subparser_get.add_parser(user,
-        parents=[user_parser],
-        description='get user description')
-    parser_get_group = subparser_get.add_parser(group,
-        parents=[group_parser],
-        description='get group description')
-    parser_get_access = subparser_get.add_parser(access,
-        parents=[access_parser],
-        description='get access description')
-    
-    # search commands
-    parser_search = subparser.add_parser(search)
-    subparser_search = parser_search.add_subparsers(dest='search_command')
-    parser_search_user = subparser_search.add_parser(user,
-        parents=[user_parser],
-        description='search user description')
-    parser_search_group = subparser_search.add_parser(group,
-        parents=[group_parser],
-        description='search group description')
-    parser_search_access = subparser_search.add_parser(access,
-        parents=[access_parser],
-        description='search access description')
-    
-    # create commands
-    parser_create = subparser.add_parser(create)
-    subparser_create = parser_create.add_subparsers(dest='create_command')
-    parser_create_user = subparser_create.add_parser(user,
-        parents=[user_parser],
-        description='create user description')
-    parser_create_group = subparser_create.add_parser(group,
-        parents=[group_parser],
-        description='create group description')
-    parser_create_access = subparser_create.add_parser(access,
-        parents=[access_parser],
-        description='create access description')
-    
-    # delete commands
-    parser_delete = subparser.add_parser(delete)
-    subparser_delete = parser_delete.add_subparsers(dest='delete_command')
-    parser_delete_user = subparser_delete.add_parser(user,
-        parents=[user_parser],
-        description='delete user description')
-    parser_delete_group = subparser_delete.add_parser(group,
-        parents=[group_parser],
-        description='delete group description')
-    parser_delete_access = subparser_delete.add_parser(access,
-        parents=[access_parser],
-        description='delete access description')
-    
-    # insert commands
-    parser_insert = subparser.add_parser(insert)
-    subparser_insert = parser_insert.add_subparsers(dest='insert_command')
-    parser_insert_group = subparser_insert.add_parser(group,
-                              parents=[group_mod_parser])
-    parser_insert_access = subparser_insert.add_parser(access,
-                              parents=[access_mod_parser])
-    
-    # remove commands
-    parser_remove = subparser.add_parser(remove)
-    subparser_remove = parser_remove.add_subparsers(dest='remove_command')
-    parser_remove_group = subparser_remove.add_parser(group,
-                              parents=[group_mod_parser])
-    parser_remove_access = subparser_remove.add_parser(access,
-                              parents=[access_mod_parser])
+    parser_get = subparser.add_parser(get, parents=[single_type_parser])
+    parser_search = subparser.add_parser(search, parents=[single_type_parser])
+    parser_create = subparser.add_parser(create, parents=[single_type_parser])
+    parser_delete = subparser.add_parser(delete, parents=[single_type_parser])
+    parser_insert = subparser.add_parser(insert, parents=[double_type_parser])
+    parser_remove = subparser.add_parser(remove, parents=[double_type_parser])
 
-    # parse arguments
     args = parser.parse_args()
 
-    # load configuration
     config_path = args.config
     config = yaml.load(file(config_path, 'r'))
     for o in args.options:
@@ -239,23 +161,23 @@ if __name__ == '__main__':
 
     lat = LDAPAdminTool(config)
 
-    # run command
     out = None
 
     if args.command == get:
-        out = lat.get(args.get_command, *args.arg1)
+        out = lat.get(args.object_type, *args.object_name)
     elif args.command == search:
-        out = lat.search(args.search_command, *args.arg1)
+        out = lat.search(args.object_type, *args.object_name)
     elif args.command == create:
-        out = lat.create(args.create_command, *args.arg1)
+        out = lat.create(args.object_type, *args.object_name)
     elif args.command == delete:
-        out = lat.delete(args.delete_command, *args.arg1)
+        out = lat.delete(args.object_type, *args.object_name)
     elif args.command == insert:
-        lat.insert(args.insert_command, args.arg1, *args.arg2)
+        lat.insert(args.group_object_type, args.group_object_name,
+                   args.member_object_type, *args.member_object_name)
     elif args.command == remove:
-        lat.remove(args.remove_command, args.arg1, *args.arg2)
+        lat.remove(args.group_object_type, args.group_object_name,
+                   args.member_object_type, *args.member_object_name)
     else:
         pass
 
-    # render output
     render_yaml_output(out)
