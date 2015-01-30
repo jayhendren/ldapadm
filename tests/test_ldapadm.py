@@ -2,6 +2,7 @@ import os
 import subprocess
 import yaml
 import unittest
+import ldap
 from src.ldapobjectmanager import LDAPObjectManager, auth
 
 proj_root_dir = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
@@ -86,6 +87,15 @@ class LdapadmTest(unittest.TestCase):
                                     )[0]
         self.assertNotIn(user_dn, group[1].get('member', []))
 
+    def verifyDoesExist(self, dn):
+        self.assertEqual(self.lom.getSingle(dn, 'objectClass=*')[0], dn)
+
+    def verifyDoesNotExist(self, dn):
+        self.assertRaises(ldap.NO_SUCH_OBJECT,
+                          self.lom.getMultiple,
+                          dn, 
+                          'objectClass=*')
+
 class LdapadmBasicTests(LdapadmTest):
 
     def testLdapadmCalledWithoutArgumentsReturnsError(self):
@@ -150,6 +160,31 @@ class LdapadmSearchTests(LdapadmTest):
             'Test Manager']
         cns = [r[1]['cn'][0] for r in output['Test']]
         self.assertItemsEqual(cns, expected_cns)
+
+class LdapadmCreateAndRemoveTests(LdapadmTest):
+
+    def testCreateAndRemove(self):
+        # Yes, I'm lazy...
+        name = 'ldapadmtest'
+        self.verifyDoesNotExist('%s=%s,%s' %(conf['user']['identifier'],
+                                             name,
+                                             conf['user']['base']))
+        schema = """\
+            schema:
+              cn: [ldapadmtest]
+              sn: [ldapadmtest]
+              homeDirectory: ['/home/ldapadmtest']
+              gidNumber: ['12345']
+              uidNumber: ['12345']
+              objectClass: [top, person, posixaccount]"""
+        runLdapadm('-o', schema, 'create', 'user', name)
+        self.verifyDoesExist('%s=%s,%s' %(conf['user']['identifier'],
+                                          name,
+                                          conf['user']['base']))
+        runLdapadm('delete', 'user', name)
+        self.verifyDoesNotExist('%s=%s,%s' %(conf['user']['identifier'],
+                                             name,
+                                             conf['user']['base']))
 
 class LdapadmInsertTests(LdapadmTest):
 

@@ -52,6 +52,11 @@ class LDAPAdminTool():
             if object[1].get(attr) is None:
                 object[1][attr] = None
 
+    def _get_dn(self, item_type, name):
+        return'%s=%s,%s' %(self._config_get(item_type, 'identifier'),
+                           name,
+                           self._config_get(item_type, 'base'))
+
     def get(self, item_type, *search_terms):
         output_obj = {}
         for t in search_terms:
@@ -74,6 +79,15 @@ class LDAPAdminTool():
                 self._add_missing_attributes(obj, item_type)
             output_obj[t] = [list(r) for r in results]
         return output_obj
+
+    def create(self, item_type, name):
+        dn = self._get_dn(item_type, name)
+        attrs = self._config_get(item_type, 'schema')
+        self.lom.createObj(dn, attrs)
+
+    def delete(self, item_type, name):
+        dn = self._get_dn(item_type, name)
+        self.lom.deleteObj(dn)
 
     def _insert_or_remove(self, action, group_type, group_name, *usernames):
         group_dn = self._get_single(group_type, group_name)[0]
@@ -128,6 +142,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config',
         help='path to a YAML-formatted configuration file')
+    parser.add_argument('-o', '--options',
+        action='append',
+        default=[],
+        help='YAML-formatted configuration supplied on the command line')
     subparser = parser.add_subparsers(dest='command')
     
     # get commands
@@ -158,17 +176,29 @@ if __name__ == '__main__':
     
     # create commands
     parser_create = subparser.add_parser(create)
-    subparser_create = parser_create.add_subparsers()
-    parser_create_user = subparser_create.add_parser(user)
-    parser_create_group = subparser_create.add_parser(group)
-    parser_create_access = subparser_create.add_parser(access)
+    subparser_create = parser_create.add_subparsers(dest='create_command')
+    parser_create_user = subparser_create.add_parser(user,
+        parents=[user_parser],
+        description='create user description')
+    parser_create_group = subparser_create.add_parser(group,
+        parents=[group_parser],
+        description='create group description')
+    parser_create_access = subparser_create.add_parser(access,
+        parents=[access_parser],
+        description='create access description')
     
     # delete commands
     parser_delete = subparser.add_parser(delete)
-    subparser_delete = parser_delete.add_subparsers()
-    parser_delete_user = subparser_delete.add_parser(user)
-    parser_delete_group = subparser_delete.add_parser(group)
-    parser_delete_access = subparser_delete.add_parser(access)
+    subparser_delete = parser_delete.add_subparsers(dest='delete_command')
+    parser_delete_user = subparser_delete.add_parser(user,
+        parents=[user_parser],
+        description='delete user description')
+    parser_delete_group = subparser_delete.add_parser(group,
+        parents=[group_parser],
+        description='delete group description')
+    parser_delete_access = subparser_delete.add_parser(access,
+        parents=[access_parser],
+        description='delete access description')
     
     # insert commands
     parser_insert = subparser.add_parser(insert)
@@ -192,6 +222,10 @@ if __name__ == '__main__':
     # load configuration
     config_path = args.config
     config = yaml.load(file(config_path, 'r'))
+    for o in args.options:
+        c = yaml.load(o)
+        config.update(c)
+
     lat = LDAPAdminTool(config)
 
     # run command
@@ -202,9 +236,9 @@ if __name__ == '__main__':
     elif args.command == search:
         out = lat.search(args.search_command, *args.arg1)
     elif args.command == create:
-        pass
+        out = lat.create(args.create_command, *args.arg1)
     elif args.command == delete:
-        pass
+        out = lat.delete(args.delete_command, *args.arg1)
     elif args.command == insert:
         lat.insert(args.insert_command, args.arg1, *args.arg2)
     elif args.command == remove:
