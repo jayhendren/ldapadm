@@ -17,6 +17,17 @@ delete = 'delete'
 insert = 'insert'
 remove = 'remove'
 
+def recursive_merge(a, b):
+    """Merge nested dictionary objects. a will be merged into b"""
+    for key in a:
+        if key in b:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                recursive_merge(a[key], b[key])
+            else:
+                raise ValueError('Cannot merge: %s and %s' %(a[key], b[key]))
+        else:
+            b[key] = a[key]
+
 def render_yaml_output(output):
     print yaml.dump(output)
 
@@ -224,7 +235,7 @@ if __name__ == '__main__':
     config = yaml.load(file(config_path, 'r'))
     for o in args.options:
         c = yaml.load(o)
-        config.update(c)
+        recursive_merge(c, config)
 
     lat = LDAPAdminTool(config)
 
