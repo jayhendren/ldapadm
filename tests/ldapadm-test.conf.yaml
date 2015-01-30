@@ -47,7 +47,9 @@ user:
   base: "cn=users,cn=accounts,dc=demo1,dc=freeipa,dc=org"
   identifier: uid
   search: [cn, uidNumber, uid, mail, sn, displayName, gecos, givenName, initials]
-  display: [uid, uidNumber, gidNumber, gecos, cn, sn, memberOf]
+  display: [uid, uidNumber, gidNumber, gecos, cn, sn]
+  schema:
+    objectClass: [top, person, posixaccount]
 group:
   base: "cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org"
   identifier: cn
