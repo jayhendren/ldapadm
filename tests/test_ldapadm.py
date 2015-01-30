@@ -169,15 +169,10 @@ class LdapadmCreateAndRemoveTests(LdapadmTest):
         self.verifyDoesNotExist('%s=%s,%s' %(conf['user']['identifier'],
                                              name,
                                              conf['user']['base']))
-        schema = """\
-            schema:
-              cn: [ldapadmtest]
-              sn: [ldapadmtest]
-              homeDirectory: ['/home/ldapadmtest']
-              gidNumber: ['12345']
-              uidNumber: ['12345']
-              objectClass: [top, person, posixaccount]"""
-        runLdapadm('-o', schema, 'create', 'user', name)
+        options = 'user: {schema: {cn: [yellow], sn:[blue], ' +\
+                  'uidNumber: ["98765"], gidNumber: ["98765"],' +\
+                  'homedirectory: ["/home/red"]}}'
+        runLdapadm('-o', options, 'create', 'user', name)
         self.verifyDoesExist('%s=%s,%s' %(conf['user']['identifier'],
                                           name,
                                           conf['user']['base']))
