@@ -205,11 +205,8 @@ if __name__ == '__main__':
     insert = 'insert'
     remove = 'remove'
 
-    # parent parser holds arguments that are common to all sub-commands
-    parent_parser = argparse.ArgumentParser(add_help=False)
-
     def get_new_parser():
-        return argparse.ArgumentParser(parents=[parent_parser], add_help=False)
+        return argparse.ArgumentParser(add_help=False)
 
     single_type_parser = get_new_parser()
     single_type_parser.add_argument('object_type')
