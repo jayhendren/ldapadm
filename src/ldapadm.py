@@ -11,11 +11,8 @@ import copy
 def recursive_merge(a, b):
     """Merge nested dictionary objects. a will be merged into b"""
     for key in a:
-        if key in b:
-            if isinstance(a[key], dict) and isinstance(b[key], dict):
-                recursive_merge(a[key], b[key])
-            else:
-                raise ValueError('Cannot merge: %s and %s' %(a[key], b[key]))
+        if key in b and isinstance(a[key], dict) and isinstance(b[key], dict):
+            recursive_merge(a[key], b[key])
         else:
             b[key] = a[key]
 
