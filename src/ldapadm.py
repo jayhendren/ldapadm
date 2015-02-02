@@ -16,6 +16,52 @@ def recursive_merge(a, b):
         else:
             b[key] = a[key]
 
+def render_pretty_output(output):
+    black          = '\x1b[30m'
+    red            = '\x1b[31m'
+    green          = '\x1b[32m'
+    yellow         = '\x1b[33m'
+    blue           = '\x1b[34m'
+    magenta        = '\x1b[35m'
+    cyan           = '\x1b[36m'
+    white          = '\x1b[37m'
+    bright_black   = '\x1b[30;1m'
+    bright_red     = '\x1b[31;1m'
+    bright_green   = '\x1b[32;1m'
+    bright_yellow  = '\x1b[33;1m'
+    bright_blue    = '\x1b[34;1m'
+    bright_magenta = '\x1b[35;1m'
+    bright_cyan    = '\x1b[36;1m'
+    bright_white   = '\x1b[37;1m'
+    reset_color    = '\x1b[39;49m'
+
+    output_str_list = []
+    for query, result in output.items():
+        header = white + query + reset_color + ':' + '\n'
+        results_str = header
+        if not result['success']:
+            results_str += red + result['message'] + reset_color + '\n'
+        else:
+            results_str += green + result['message'] + reset_color + '\n'
+            for r in result.get('results', {}):
+                divider = '-' * 40 + '\n'
+                entry = ''
+                for k, v in r[1].items():
+                    attribute = cyan + "%-18s" % k + reset_color + ': ' 
+                    # value_template = magenta + '%s' + reset_color + '\n'
+                    if v is None:
+                        entry += attribute + magenta + 'None' + \
+                                 reset_color + '\n'
+                    else:
+                        for i in v:
+                            entry += attribute + yellow + i + \
+                                     reset_color + '\n'
+                results_str += divider + entry + divider
+        output_str_list.append(results_str)
+    output_str = '\n'.join(output_str_list)
+
+    print output_str
+
 def render_yaml_output(output):
     print yaml.dump(output)
 
@@ -395,4 +441,7 @@ if __name__ == '__main__':
     else:
         pass
 
-    render_yaml_output(out)
+    if args.pretty:
+        render_pretty_output(out)
+    else:
+        render_yaml_output(out)
