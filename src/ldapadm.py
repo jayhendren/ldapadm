@@ -171,14 +171,16 @@ class LDAPAdminTool():
             output_obj[t] = [list(r) for r in results]
         return output_obj
 
-    def create(self, item_type, name):
-        dn = self._get_dn(item_type, name)
-        attrs = self._config_get(item_type, 'schema')
-        self._lom.create_object(dn, attrs)
+    def create(self, item_type, *names):
+        for name in names:
+            dn = self._get_dn(item_type, name)
+            attrs = self._config_get(item_type, 'schema')
+            self._lom.create_object(dn, attrs)
 
-    def delete(self, item_type, name):
-        dn = self._get_dn(item_type, name)
-        self._lom.delete_object(dn)
+    def delete(self, item_type, *names):
+        for name in names:
+            dn = self._get_dn(item_type, name)
+            self._lom.delete_object(dn)
 
     def _insert_or_remove(self, action, group_type, group_name,
                           member_type, *member_names):
