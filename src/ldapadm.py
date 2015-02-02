@@ -148,42 +148,79 @@ class LDAPAdminTool():
                            self._config_get(item_type, 'base'))
 
     def get(self, item_type, *search_terms):
-        output_obj = {}
+        results = {}
         for t in search_terms:
+            success = True
+            message = None
             obj = self._get_single(item_type, t,
                 attrs=self._config_get(item_type, 'display'))
             # add blank attrs for attrs in display list that aren't on object
             self._add_missing_attributes(obj, item_type)
-            output_obj[t] = list(obj)
-        return output_obj
+            if success:
+                message = "Found result for \"%s\"" % t
+            else:
+                message = "Did not find result for \"%s\"" % t
+            results[t] = {'results': [list(obj)],
+                          'success': success,
+                          'message': message}
+        return results
 
     def search(self, item_type, *search_terms):
         output_obj = {}
         for t in search_terms:
+            success = True
+            message = None
             query = self._build_query(self._config_get(item_type, search),
                                      ['%s*' % t])
-            results = self._lom.get_multiple(
-                self._config_get(item_type, 'base'),
-                query,
+            base = self._config_get(item_type, 'base')
+            results = self._lom.get_multiple(base, query,
                 attrs=self._config_get(item_type, 'display'))
             for obj in results:
                 self._add_missing_attributes(obj, item_type)
-            output_obj[t] = [list(r) for r in results]
+            if not results:
+                success = False
+                message = "Did not find result for \"%s\"" % t
+            else:
+                message = "Found result(s) for \"%s\"" % t
+            output_obj[t] = {'results': [list(r) for r in results],
+                             'success': success,
+                             'message': message}
         return output_obj
 
     def create(self, item_type, *names):
+        results = {}
         for name in names:
+            success = True
+            message = None
             dn = self._get_dn(item_type, name)
             attrs = self._config_get(item_type, 'schema')
             self._lom.create_object(dn, attrs)
+            if success:
+                message = "Created object %s." %dn
+            else:
+                message = "Failed to create object %s." %dn
+            results[name] = {'success': success, 'message': message}
+        return results
 
     def delete(self, item_type, *names):
+        results = {}
         for name in names:
+            success = True
+            message = None
             dn = self._get_dn(item_type, name)
             self._lom.delete_object(dn)
+            if success:
+                message = "Deleted object %s." %dn
+            else:
+                message = "Failed to delete object %s." %dn
+            results[name] = {'success': success, 'message': message}
+        return results
 
     def _insert_or_remove(self, action, group_type, group_name,
                           member_type, *member_names):
+        success = True
+        message = None
+        result = {}
         group_dn = self._get_single(group_type, group_name)[0]
         member_dns = []
         for name in member_names:
@@ -196,12 +233,27 @@ class LDAPAdminTool():
              group_dn, 
              self._config_get(group_type, 'member', default='member'),
              *member_dns)
+        for name in member_names:
+            if success:
+                if action == insert:
+                    message = "%s inserted into group %s" %(name, group_name)
+                elif action == remove:
+                    message = "%s removed from group %s" %(name, group_name)
+            else:
+                if action == insert:
+                    message = "%s not inserted into group %s" \
+                              %(name, group_name)
+                elif action == remove:
+                    message = "%s not removed from group %s" \
+                              %(name, group_name)
+            result[name] = {'success': success, 'message': message}
+        return result
 
     def insert(self, *args, **kwargs):
-        self._insert_or_remove(insert, *args, **kwargs)
+        return self._insert_or_remove(insert, *args, **kwargs)
 
     def remove(self, *args, **kwargs):
-        self._insert_or_remove(remove, *args, **kwargs)
+        return self._insert_or_remove(remove, *args, **kwargs)
 
 if __name__ == '__main__':
 
