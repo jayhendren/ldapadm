@@ -43,7 +43,11 @@ class LdapadmTest(unittest.TestCase):
         self.assertTrue(success)
 
     def assertLdapadmFails(self, *args, **kwargs):
-        self.assertNotEqual(self.runLdapadm(*args, **kwargs)[2], 0)
+        stdout, stderr, code = self.runLdapadm(*args, **kwargs)
+        self.assertNotEqual(code, 0)
+        # output_obj = yaml.load(stdout)
+        # success = all([v['success'] for k, v in output_obj.items()])
+        # self.assertFalse(success)
 
     def verifyOutput(self, output, object, type, search_term):
         output_obj = yaml.load(output[0])[search_term]['results'][0][1]
