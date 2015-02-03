@@ -55,7 +55,7 @@ class LdapadmTest(unittest.TestCase):
         runLdapadm(*args, raise_on_success=True, **kwargs)
 
     def verifyOutput(self, output, object, type, search_term):
-        output_obj = yaml.load(output[0])[search_term][1]
+        output_obj = yaml.load(output[0])[search_term]['results'][0][1]
         filtered_obj = {k:object[1].get(k) \
                         for k in conf[type]['display']}
         self.assertEqual(output_obj, filtered_obj)
@@ -158,7 +158,7 @@ class LdapadmSearchTests(LdapadmTest):
             'Test Employee',
             'Test Helpdesk',
             'Test Manager']
-        cns = [r[1]['cn'][0] for r in output['Test']]
+        cns = [r[1]['cn'][0] for r in output['Test']['results']]
         self.assertItemsEqual(cns, expected_cns)
 
 class LdapadmCreateAndRemoveTests(LdapadmTest):
