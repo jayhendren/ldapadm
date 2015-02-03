@@ -36,7 +36,11 @@ class LdapadmTest(unittest.TestCase):
         return result
 
     def assertLdapadmSucceeds(self, *args, **kwargs):
-        self.assertEqual(self.runLdapadm(*args, **kwargs)[2], 0)
+        stdout, stderr, code = self.runLdapadm(*args, **kwargs)
+        self.assertEqual(code, 0)
+        output_obj = yaml.load(stdout)
+        success = all([v['success'] for k, v in output_obj.items()])
+        self.assertTrue(success)
 
     def assertLdapadmFails(self, *args, **kwargs):
         self.assertNotEqual(self.runLdapadm(*args, **kwargs)[2], 0)
