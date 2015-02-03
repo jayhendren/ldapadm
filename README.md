@@ -177,7 +177,7 @@ Some notes:
   returned.  If an attribute is listed in this option but not present on
   an object, the value for that attribute will be `null` in the output.
 
-An example configuration file can be found in the **Examples** section.
+An example configuration file can be found in the [Examples](#Examples) section.
 
 Configuration can also be supplied on the command line with an argument
 to the `-o` or `--options` flag.  The argument must be a YAML-formatted
@@ -185,7 +185,7 @@ string with the same structure as above.  Any configuration options
 supplied this way will merge with and override options supplied in the
 configuration file.
 
-Examples of using the `-o` flag are available in the **Examples** section.
+Examples of using the `-o` flag are available in the [Examples](#Examples) section.
 
 ## Examples
 
@@ -193,6 +193,6 @@ Examples of using the `-o` flag are available in the **Examples** section.
 
 Here are a couple examples of configuration supplied using the `-o` flag:
 
-* `ldapadm -o "uri: 'ldaps://foo.bar'" get user foobar
+* `ldapadm -o "uri: 'ldaps://foo.bar'" get user foobar`
 * `ldapadm -o "{user: {schema: {cn: ['john'], sn: ['doe']}}}" create
    user johndoe`
