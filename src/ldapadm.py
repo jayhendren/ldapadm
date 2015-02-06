@@ -412,10 +412,10 @@ if __name__ == '__main__':
     elif args.command == delete:
         out = lat.delete(args.object_type, *args.object_name)
     elif args.command == insert:
-        lat.insert(args.group_object_type, args.group_object_name,
+        out = lat.insert(args.group_object_type, args.group_object_name,
                    args.member_object_type, *args.member_object_name)
     elif args.command == remove:
-        lat.remove(args.group_object_type, args.group_object_name,
+        out = lat.remove(args.group_object_type, args.group_object_name,
                    args.member_object_type, *args.member_object_name)
     else:
         pass
