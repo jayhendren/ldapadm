@@ -173,8 +173,25 @@ class LDAPAdminTool():
             cursor = cursor.get(a, default)
         return cursor
 
-    def _build_query(self, fields, values):
-        return "(|%s)" % "".join(["(%s=%s)" % (f, v) for v in values \
+    def _join_filter(self, char, *filters):
+        if len(filters) == 0:
+            return ''
+        if len(filters) == 1:
+            return filters[0]
+        else:
+            def strip_parens(f):
+                return f[1:-1] if f.endswith(')') and f.startswith('(') else f
+            filters = map(strip_parens, filters)
+            return '(%s%s)' %(char, ''.join(['(%s)' % f for f in filters]))
+
+    def _join_and_filter(self, *filters):
+        return self._join_filter('&', *filters)
+
+    def _join_or_filter(self, *filters):
+        return self._join_filter('|', *filters)
+
+    def _build_search_filter(self, fields, values):
+        return self._join_or_filter(*["(%s=%s)" % (f, v) for v in values \
                                   for f in fields])
     
     def _get_single(self, item_type, search_term, attrs=None):
@@ -192,6 +209,18 @@ class LDAPAdminTool():
                            name,
                            self._config_get(item_type, 'base'))
 
+    def _search_for_objects_of_type(self, object_type, search_filter):
+        base = self._config_get(object_type, 'base',
+            default=self._config_get('base'))
+        object_filter = self._config_get(object_type, 'filter')
+        if object_filter:
+            search_filter = self._join_and_filter(search_filter, object_filter)
+        display_attrs = self._config_get(object_type, 'display')
+        r = self._lom.get_multiple(base, search_filter, attrs=display_attrs)
+        for obj in r:
+            self._add_missing_attributes(obj, object_type)
+        return r
+
     def _get(self, search_term, item_type):
         obj = self._get_single(item_type, search_term,
             attrs=self._config_get(item_type, 'display'))
@@ -199,13 +228,10 @@ class LDAPAdminTool():
         return [list(obj)]
 
     def _search(self, search_term, item_type):
-        query = self._build_query(self._config_get(item_type, search),
+        search_filter = self._build_search_filter(
+                                 self._config_get(item_type, search),
                                  ['%s*' % search_term])
-        base = self._config_get(item_type, 'base')
-        results = self._lom.get_multiple(base, query,
-            attrs=self._config_get(item_type, 'display'))
-        for obj in results:
-            self._add_missing_attributes(obj, item_type)
+        results = self._search_for_objects_of_type(item_type, search_filter)
         if not results:
             raise RuntimeError('No results for search query "%s"' %search_term)
         return [list(r) for r in results]
