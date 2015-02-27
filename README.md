@@ -108,17 +108,20 @@ writing, this tool is not yet complete and not all configuration items
 are implemented):
 
     uri:             # uri of the ldap server. required
+    base:            # base object of the directory tree. required?
     options:         # dictionary of ldap options
-    <type>:            # user-supplied type; configuration may define an
+    <type>:          # user-supplied type; configuration may define an
                      # arbitrary number of types. at least one is required
       base:          # search base. required
       scope:         # search scope [base, onelevel, subtree] default: subtree
       member:        # attribute that contains member DNs.
                      # used when adding/removing membership. default: member
-      member_oid:    # Active Directory OID to add to member query
+      member_matching_rule_in_chain:
+                     # Active Directory OID to add to member query. true|false
       member_of:     # attribute that contains membership DNs.
                      # used when searching membership. default: memberOf
-      member_of_oid: # Active Directory OID to add to member_of query
+      member_of_matching_rule_in_chain:
+                     # Active Directory OID to add to member query. true|false
       schema:        # schema for new objects
       identifier:    # attribute to look in for "get" commands. default: cn
       search:        # attributes to look in for "search" commands.
