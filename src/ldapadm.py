@@ -269,6 +269,30 @@ class LDAPAdminTool():
     def _remove(self, *args, **kwargs):
         return self._insert_or_remove(remove, *args, **kwargs)
 
+    def _members(self, group_name, group_type, **kwargs):
+        # this isn't quite right...
+        member_of_attr = self._config_get(group_type, 'memberOf',
+                                          default='memberOf')
+        use_oid = self._config_get(group_type, 'member_matching_rule_in_chain',
+                                   default = False)
+        oid = matching_rule_in_chain if use_oid else ''
+        group_dn = self._get_dn(group_type, group_name)
+        search_filter = "(%s%s=%s)" %(member_of_attr, oid, group_dn)
+        member_type =  kwargs.get('member_type')
+        return self._search_for_objects_of_type(member_type, search_filter)
+
+    def _membership(self, member_name, member_type, **kwargs):
+        member_attr = self._config_get(member_type, 'member',
+                                          default='member')
+        use_oid = self._config_get(member_type,
+                                   'member_of_matching_rule_in_chain',
+                                   default = False)
+        oid = matching_rule_in_chain if use_oid else ''
+        member_dn = self._get_dn(member_type, member_name)
+        search_filter = "(%s%s=%s)" %(member_attr, oid, member_dn)
+        group_type =  kwargs.get('member_type')
+        return self._search_for_objects_of_type(group_type, search_filter)
+
     def _generate_output(self, function, args_list, iterable, **kwargs):
         output = {}
         for i in iterable:
@@ -311,6 +335,14 @@ class LDAPAdminTool():
                                                     group_object_type],
                                      member_object_names)
 
+    def members(self, object_type, *object_names, **kwargs):
+        return self._generate_output(self._members, [object_type],
+                                     object_names, **kwargs)
+
+    def membership(self, object_type, *object_names, **kwargs):
+        return self._generate_output(self._membership, [object_type],
+                                     object_names, **kwargs)
+
 if __name__ == '__main__':
 
     # command literals
@@ -320,6 +352,8 @@ if __name__ == '__main__':
     delete = 'delete'
     insert = 'insert'
     remove = 'remove'
+    members = 'members'
+    membership = 'membership'
 
     def get_new_parser():
         return argparse.ArgumentParser(add_help=False)
@@ -412,6 +446,15 @@ if __name__ == '__main__':
         description="""Insert members (of any type) into a group object.""")
     parser_remove = subparser.add_parser(remove, parents=[double_type_parser],
         description="""Remove members (of any type) from a group object.""")
+    parser_members = subparser.add_parser(members,
+        parents=[single_type_parser],
+        description="""Find all members of a group.""")
+    parser_membership = subparser.add_parser(membership,
+        parents=[single_type_parser],
+        description="""Find all groups that an object is a member of.""")
+
+    parser_members.add_argument('-t', '--member-type', metavar='MEMBER_TYPE')
+    parser_membership.add_argument('-t', '--group-type', metavar='GROUP_TYPE')
 
     args = parser.parse_args()
 
@@ -448,6 +491,12 @@ if __name__ == '__main__':
     elif args.command == remove:
         out = lat.remove(args.group_object_type, args.group_object_name,
                    args.member_object_type, *args.member_object_name)
+    elif args.command == members:
+        out = lat.members(args.object_type, *args.object_name,
+                          member_type=args.member_type)
+    elif args.command == membership:
+        out = lat.membership(args.object_type, *args.object_name,
+                          group_type=args.group_type)
     else:
         pass
 
