@@ -8,6 +8,8 @@ import ldap.modlist
 import textwrap
 import copy
 
+matching_rule_in_chain = ':1.2.840.113556.1.4.1941:'
+
 def recursive_merge(a, b):
     """Merge nested dictionary objects. a will be merged into b"""
     for key in a:
@@ -205,6 +207,9 @@ class LDAPAdminTool():
                 object[1][attr] = None
 
     def _get_dn(self, item_type, name):
+        return self._get_single(item_type, name)[0]
+
+    def _generate_dn(self, item_type, name):
         return'%s=%s,%s' %(self._config_get(item_type, 'identifier'),
                            name,
                            self._config_get(item_type, 'base'))
@@ -237,7 +242,7 @@ class LDAPAdminTool():
         return [list(r) for r in results]
 
     def _create(self, name, item_type):
-        dn = self._get_dn(item_type, name)
+        dn = self._generate_dn(item_type, name)
         attrs = self._config_get(item_type, 'schema')
         self._lom.create_object(dn, attrs)
 
