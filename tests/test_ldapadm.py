@@ -31,12 +31,14 @@ def setUpModule():
         'user': {
             'base': user_base,
             'identifier': 'cn',
-            'display': ['cn']
+            'display': ['cn'],
+            'search': ['cn', 'testAttribute']
             },
         'group': {
             'base': group_base,
             'identifier': 'cn',
-            'display': ['cn']
+            'display': ['cn'],
+            'search': ['cn', 'testAttribute']
             }
         }
     tmpdir = os.path.dirname(conf_path)
@@ -121,8 +123,8 @@ class LdapadmTest(unittest.TestCase):
 
     def createObject(self, type, name):
         dn = self.getDN(type, name)
-        ldapobject.add_ext_s(dn, ldap.modlist.addModlist({'objectClass':
-                                                          ['test%s' %type]}))
+        ldapobject.add_ext_s(dn, ldap.modlist.addModlist(
+            {'objectClass': ['test%s' %type], 'testAttribute': 'test me'}))
 
     def deleteObject(self, type, name):
         dn = self.getDN(type, name)
@@ -200,17 +202,14 @@ class LdapadmGetTests(LdapadmTest):
     def testMultipleGetUser(self):
         pass
 
-# class LdapadmSearchTests(LdapadmTest):
-# 
-#     def testSearchUser(self):
-#         output = yaml.load(self.runLdapadm('search', 'user', 'Test')[0])
-#         expected_cns = [
-#             'Test Employee',
-#             'Test Helpdesk',
-#             'Test Manager']
-#         cns = [r[1]['cn'][0] for r in output['Test']['results']]
-#         self.assertItemsEqual(cns, expected_cns)
-# 
+class LdapadmSearchTests(LdapadmTest):
+
+    def testSearchUser(self):
+        search_term = 'test me'
+        output = yaml.load(self.runLdapadm('search', 'user', search_term)[0])
+        cns = [r[1]['cn'][0] for r in output[search_term]['results']]
+        self.assertItemsEqual(cns, self.user_list)
+
 # class LdapadmCreateAndRemoveTests(LdapadmTest):
 # 
 #     def testCreateAndRemove(self):
