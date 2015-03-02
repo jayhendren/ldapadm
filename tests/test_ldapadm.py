@@ -6,6 +6,7 @@ import ldap, ldap.modlist
 import ldap_test
 
 proj_root_dir = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
+conf_path = os.path.join(proj_root_dir, 'tmp/ldapadm-test.conf.yaml')
 
 def setUpModule():
     global server, config, ldapobject
@@ -28,16 +29,26 @@ def setUpModule():
     config = {
         'uri': uri,
         'user': {
-            'base': user_base
+            'base': user_base,
+            'identifier': 'cn',
+            'display': ['cn']
             },
         'group': {
-            'base': group_base
+            'base': group_base,
+            'identifier': 'cn',
+            'display': ['cn']
             }
         }
+    tmpdir = os.path.dirname(conf_path)
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
+    f = open(conf_path, 'w')
+    f.write(yaml.dump(config))
 
 def tearDownModule():
     global server
     server.stop()
+    os.remove(conf_path)
 
 class LdapadmTest(unittest.TestCase):
 
@@ -60,7 +71,7 @@ class LdapadmTest(unittest.TestCase):
         use_default_config = kwargs.get('use_default_config', True)
     
         if use_default_config:
-            args = ('-o', yaml.dump(config)) + args
+            args = ('-c', conf_path) + args
     
         cmd = [os.path.join(proj_root_dir, 'src/ldapadm.py')] + list(args)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
@@ -81,8 +92,14 @@ class LdapadmTest(unittest.TestCase):
         stdout, stderr, code = self.runLdapadm(*args, **kwargs)
         self.assertNotEqual(code, 0)
         output_obj = yaml.load(stdout)
-        failure = any([v['success'] for k, v in output_obj.items()])
-        self.assertTrue(success)
+        try:
+            failure = not all([v['success'] for k, v in output_obj.items()])
+        except AttributeError:
+            self.assertTrue(False, "Expected YAML output.  Instead received:" +
+                            "\nstdout:\n%s\n" %stdout +
+                            "stderr:\n%s\n" %stderr +
+                            "code:%s" %code)
+        self.assertTrue(failure)
 
     def assertLdapadmFailsWithoutOutput(self, *args, **kwargs):
         stdout, stderr, code = self.runLdapadm(*args, **kwargs)
@@ -91,10 +108,13 @@ class LdapadmTest(unittest.TestCase):
         self.assertIsNone(output_obj)
 
     def verifyOutput(self, output, object, type, search_term):
-        output_obj = yaml.load(output[0])[search_term]['results'][0][1]
-        filtered_obj = {k:object[1].get(k) \
-                        for k in self.conf[type]['display']}
-        self.assertEqual(output_obj, filtered_obj)
+        try:
+            output_obj = yaml.load(output[0])[search_term]['results'][0][1]
+            filtered_obj = {k:object[1].get(k) \
+                            for k in config[type]['display']}
+            self.assertEqual(output_obj, filtered_obj)
+        except IndexError:
+            self.assertFalse(True, "unexpected output:\n" + output[0])
 
     def getDN(self, type, name):
         return "cn=%s,%s" %(name, config[type]['base'])
@@ -110,17 +130,6 @@ class LdapadmTest(unittest.TestCase):
 
     def deleteObjectByDN(self, dn):
         ldapobject.delete_ext_s(dn)
-
-    # def createGroup(self, name):
-    #     dn = 'cn=%s,cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org' % name
-    #     self.lom.create_object(dn,
-    #                        {'objectClass': ['posixgroup', 'nestedGroup'],
-    #                         'gidNumber'  : ['1234567890']})
-    #     return dn
-
-    # def deleteGroup(self, name):
-    #     dn = 'cn=%s,cn=groups,cn=accounts,dc=demo1,dc=freeipa,dc=org' % name
-    #     self.lom.delete_object(dn)
 
     # def verifyGroupContainsUser(self, group_dn, user_name):
     #     group = self.lom.get_single(group_dn, 'objectClass=*')
@@ -156,51 +165,41 @@ class LdapadmBasicTests(LdapadmTest):
         self.assertRegexpMatches(self.runLdapadm("-h")[0], r'usage:')
         self.assertRegexpMatches(self.runLdapadm("--help")[0], r'usage:')
 
-# class LdapadmGetTests(LdapadmTest):
-# 
-#     def getOutput(self, type, search_term):
-#         return self.runLdapadm('get', type, search_term)
-# 
-#     def getObject(self, type, search_term):
-#         return self.lom.get_single(self.conf[type]['base'],
-#             '%s=%s' %(self.conf[type]['identifier'], search_term))
-# 
-#     def verifyCanGet(self, type, search_term):
-#         output = self.getOutput(type, search_term)
-#         object = self.getObject(type, search_term)
-#         self.verifyOutput(output, object, type, search_term)
-# 
-#     def verifyCannotGet(self, type, search_term):
-#         self.assertLdapadmFails('get', type, search_term)
-# 
-#     def testGetWithBadArgumentsReturnsError(self):
-#         self.assertLdapadmFails('get')
-#         self.assertLdapadmFails('get', 'bogus')
-# 
-#     def testSimpleGetUser(self):
-# 
-#         for user in ('bogus', 'totallynotauser'):
-#             self.verifyCannotGet('user', user)
-#         for user in ('admin', 'manager', 'employee', 'helpdesk'):
-#             self.verifyCanGet('user', user)
-# 
-#     def testMultipleGetUser(self):
-#         pass
-# 
-#     def testSimpleGetUnixGroup(self):
-# 
-#         for group in ('bogus', 'totallynotagroup'):
-#             self.verifyCannotGet('group', group)
-#         for group in ('admins', 'managers', 'employees', 'helpdesk'):
-#             self.verifyCanGet('group', group)
-# 
-#     def testSimpleGetAccessGroup(self):
-# 
-#         for access in ('bogus', 'totallynotaaccess'):
-#             self.verifyCannotGet('access', access)
-#         for access in ('admins', 'managers', 'employees', 'helpdesk'):
-#             self.verifyCanGet('access', access)
-# 
+class LdapadmGetTests(LdapadmTest):
+
+    def getOutput(self, type, search_term):
+        return self.runLdapadm('get', type, search_term)
+
+    def getObject(self, type, search_term):
+        dn = self.getDN(type, search_term)
+        return ldapobject.search_ext_s(dn, ldap.SCOPE_BASE)[0]
+
+    def verifyCanGet(self, type, search_term):
+        output = self.getOutput(type, search_term)
+        object = self.getObject(type, search_term)
+        self.verifyOutput(output, object, type, search_term)
+
+    def verifyCannotGet(self, type, search_term):
+        self.assertLdapadmFails('get', type, search_term)
+
+    def testGetWithBadArgumentsReturnsError(self):
+        self.assertLdapadmFailsWithoutOutput('get')
+        self.assertLdapadmFailsWithoutOutput('get', 'bogus')
+
+    def testSimpleGetUser(self):
+
+        for user in ('bogus', 'totallynotauser'):
+            self.verifyCannotGet('user', user)
+        for user in self.user_list:
+            self.verifyCanGet('user', user)
+        for group in ('bogus', 'totallynotagroup'):
+            self.verifyCannotGet('group', group)
+        for group in self.group_list:
+            self.verifyCanGet('group', group)
+
+    def testMultipleGetUser(self):
+        pass
+
 # class LdapadmSearchTests(LdapadmTest):
 # 
 #     def testSearchUser(self):
