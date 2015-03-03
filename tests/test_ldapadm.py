@@ -149,14 +149,22 @@ class LdapadmTest(unittest.TestCase):
     #                                 )[0]
     #     self.assertNotIn(user_dn, group[1].get('member', []))
 
-    # def verifyDoesExist(self, dn):
-    #     self.assertEqual(self.lom.get_single(dn, 'objectClass=*')[0], dn)
+    def getObjectByDN(self, dn):
+        return ldapobject.search_ext_s(dn, ldap.SCOPE_BASE)[0]
 
-    # def verifyDoesNotExist(self, dn):
-    #     self.assertRaises(ldap.NO_SUCH_OBJECT,
-    #                       self.lom.get_multiple,
-    #                       dn, 
-    #                       'objectClass=*')
+    def verifyDoesExistByDN(self, dn):
+        self.assertEqual(self.getObjectByDN(dn)[0], dn)
+
+    def verifyDoesNotExistByDN(self, dn):
+        self.assertRaises(ldap.NO_SUCH_OBJECT, self.getObjectByDN, dn)
+
+    def verifyObjectDoesNotExistByName(self, type, name):
+        dn = self.getDN(type, name)
+        self.verifyDoesNotExistByDN(dn)
+
+    def verifyObjectExistsByName(self, type, name):
+        dn = self.getDN(type, name)
+        self.verifyDoesExistByDN(dn)
 
 class LdapadmBasicTests(LdapadmTest):
 
@@ -210,8 +218,15 @@ class LdapadmSearchTests(LdapadmTest):
         cns = [r[1]['cn'][0] for r in output[search_term]['results']]
         self.assertItemsEqual(cns, self.user_list)
 
-# class LdapadmCreateAndRemoveTests(LdapadmTest):
-# 
+class LdapadmCreateTests(LdapadmTest):
+
+    def testCreateUser(self):
+        name = 'foobar'
+        object_type = 'user'
+        self.verifyObjectDoesNotExistByName(object_type, name)
+        self.createObject(object_type, name)
+        self.verifyObjectExistsByName(object_type, name)
+
 #     def testCreateAndRemove(self):
 #         # Yes, I'm lazy...
 #         name = 'ldapadmtest'
