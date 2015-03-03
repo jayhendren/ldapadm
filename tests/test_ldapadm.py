@@ -4,6 +4,7 @@ import yaml
 import unittest
 import ldap, ldap.modlist
 import ldap_test
+import random
 
 proj_root_dir = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
 conf_path = os.path.join(proj_root_dir, 'tmp/ldapadm-test.conf.yaml')
@@ -171,6 +172,20 @@ class LdapadmTest(unittest.TestCase):
         dn = self.getDN(type, name)
         self.verifyDoesExistByDN(dn)
 
+    def verifyGroupDoesNotContainUser(self, group, user):
+        # this method doesn't work for nested groups (yet)
+        group_dn = self.getDN('group', group)
+        group_object = self.getObjectByDN(group_dn)
+        user_dn = self.getDN('user', user)
+        self.assertNotIn(user_dn, group_object[1].get('member', []))
+
+    def verifyGroupContainsUser(self, group, user):
+        # this method doesn't work for nested groups (yet)
+        group_dn = self.getDN('group', group)
+        group_object = self.getObjectByDN(group_dn)
+        user_dn = self.getDN('user', user)
+        self.assertIn(user_dn, group_object[1].get('member', []))
+
     def LdapadmCreateObject(self, type, name):
         options = yaml.dump({type: {'schema': \
                             self.getNewTestObjectAttributes(type)}})
@@ -178,6 +193,9 @@ class LdapadmTest(unittest.TestCase):
 
     def LdapadmDeleteObject(self, type, name):
         self.runLdapadm('delete', type, name)
+
+    def LdapadmInsert(self, group, user):
+        self.runLdapadm('insert', 'group', group, 'user', user)
 
 class LdapadmBasicTests(LdapadmTest):
 
@@ -249,8 +267,20 @@ class LdapadmDeleteTests(LdapadmTest):
             self.LdapadmDeleteObject(object_type, user)
             self.verifyObjectDoesNotExistByName(object_type, user)
 
-# class LdapadmInsertTests(LdapadmTest):
-# 
+class LdapadmInsertTests(LdapadmTest):
+
+    def testInsertWithBadArgumentsReturnsError(self):
+        self.assertLdapadmFailsWithoutOutput('insert')
+        self.assertLdapadmFailsWithoutOutput('insert', 'boguscommand')
+        self.assertLdapadmFailsWithoutOutput('insert', 'group', 'bogusgroup')
+
+    def testInsertUserIntoGroup(self):
+        group = random.choice(self.group_list)
+        user = random.choice(self.user_list)
+        self.verifyGroupDoesNotContainUser(group, user)
+        self.LdapadmInsert(group, user)
+        self.verifyGroupContainsUser(group, user)
+
 #     def setUp(self):
 #         # create group object with blank member attribute
 #         self.obj_cn = 'foobars'
@@ -264,12 +294,6 @@ class LdapadmDeleteTests(LdapadmTest):
 #                                                user_name)
 #                                     )[0]
 #         self.assertIn(user_dn, group[1]['member'])
-# 
-#     def testInsertWithBadArgumentsReturnsError(self):
-#         self.assertLdapadmFails('insert')
-#         self.assertLdapadmFails('insert', 'boguscommand')
-#         self.assertLdapadmFails('insert', 'group', 'bogusgroup')
-#         self.assertLdapadmFails('insert', 'access', 'bogusgroup')
 # 
 #     def testInsertGroupCanInsertSingleUser(self):
 #         for user in ['helpdesk', 'employee', 'manager']:
