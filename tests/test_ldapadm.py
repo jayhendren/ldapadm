@@ -5,6 +5,7 @@ import unittest
 import ldap, ldap.modlist
 import ldap_test
 import random
+import copy
 
 proj_root_dir = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
 conf_path = os.path.join(proj_root_dir, 'tmp/ldapadm-test.conf.yaml')
@@ -110,15 +111,6 @@ class LdapadmTest(unittest.TestCase):
         output_obj = yaml.load(stdout)
         self.assertIsNone(output_obj)
 
-    def verifyOutput(self, output, object, type, search_term):
-        try:
-            output_obj = yaml.load(output[0])[search_term]['results'][0][1]
-            filtered_obj = {k:object[1].get(k) \
-                            for k in config[type]['display']}
-            self.assertEqual(output_obj, filtered_obj)
-        except IndexError:
-            self.assertFalse(True, "unexpected output:\n" + output[0])
-
     def getDN(self, type, name):
         return "cn=%s,%s" %(name, config[type]['base'])
 
@@ -127,6 +119,9 @@ class LdapadmTest(unittest.TestCase):
 
     def getNewTestObjectModlist(self, type):
         return ldap.modlist.addModlist(self.getNewTestObjectAttributes(type))
+
+    def getObjectByDN(self, dn):
+        return ldapobject.search_ext_s(dn, ldap.SCOPE_BASE)[0]
 
     def createObject(self, type, name):
         dn = self.getDN(type, name)
@@ -139,24 +134,25 @@ class LdapadmTest(unittest.TestCase):
     def deleteObjectByDN(self, dn):
         ldapobject.delete_ext_s(dn)
 
-    # def verifyGroupContainsUser(self, group_dn, user_name):
-    #     group = self.lom.get_single(group_dn, 'objectClass=*')
-    #     user_dn = self.lom.get_single(self.conf['user']['base'],
-    #                                  '%s=%s' %(self.conf['user']['identifier'],
-    #                                            user_name)
-    #                                 )[0]
-    #     self.assertIn(user_dn, group[1].get('member', []))
+    def insertUserIntoGroup(self, group, user):
+        user_dn = self.getDN('user', user)
+        group_dn = self.getDN('group', group)
+        group_object = self.getObjectByDN(group_dn)[1]
+        new_group_object = copy.deepcopy(group_object)
+        member_list = new_group_object.get('member', [])
+        member_list.append(user_dn)
+        new_group_object['member'] = member_list
+        modlist = ldap.modlist.modifyModlist(group_object, new_group_object)
+        ldapobject.modify_ext_s(group_dn, modlist)
 
-    # def verifyGroupDoesNotContainUser(self, group_dn, user_name):
-    #     group = self.lom.get_single(group_dn, 'objectClass=*')
-    #     user_dn = self.lom.get_single(self.conf['user']['base'],
-    #                                  '%s=%s' %(self.conf['user']['identifier'],
-    #                                            user_name)
-    #                                 )[0]
-    #     self.assertNotIn(user_dn, group[1].get('member', []))
-
-    def getObjectByDN(self, dn):
-        return ldapobject.search_ext_s(dn, ldap.SCOPE_BASE)[0]
+    def verifyOutput(self, output, object, type, search_term):
+        try:
+            output_obj = yaml.load(output[0])[search_term]['results'][0][1]
+            filtered_obj = {k:object[1].get(k) \
+                            for k in config[type]['display']}
+            self.assertEqual(output_obj, filtered_obj)
+        except IndexError:
+            self.assertFalse(True, "unexpected output:\n" + output[0])
 
     def verifyDoesExistByDN(self, dn):
         self.assertEqual(self.getObjectByDN(dn)[0], dn)
@@ -196,6 +192,9 @@ class LdapadmTest(unittest.TestCase):
 
     def LdapadmInsert(self, group, user):
         self.runLdapadm('insert', 'group', group, 'user', user)
+
+    def LdapadmRemove(self, group, user):
+        self.runLdapadm('remove', 'group', group, 'user', user)
 
 class LdapadmBasicTests(LdapadmTest):
 
@@ -281,81 +280,18 @@ class LdapadmInsertTests(LdapadmTest):
         self.LdapadmInsert(group, user)
         self.verifyGroupContainsUser(group, user)
 
-#     def setUp(self):
-#         # create group object with blank member attribute
-#         self.obj_cn = 'foobars'
-#         super(LdapadmInsertTests, self).setUp()
-#         self.obj_dn = self.createGroup(self.obj_cn)
-# 
-#     def verifyGroupContainsUser(self, group_dn, user_name):
-#         group = self.lom.get_single(group_dn, 'objectClass=*')
-#         user_dn = self.lom.get_single(self.conf['user']['base'],
-#                                      '%s=%s' %(self.conf['user']['identifier'],
-#                                                user_name)
-#                                     )[0]
-#         self.assertIn(user_dn, group[1]['member'])
-# 
-#     def testInsertGroupCanInsertSingleUser(self):
-#         for user in ['helpdesk', 'employee', 'manager']:
-#             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-#             self.runLdapadm('insert', 'group', self.obj_cn, 'user', user)
-#             self.verifyGroupContainsUser(self.obj_dn, user)
-# 
-#     def testInsertAccessCanInsertSingleUser(self):
-#         for user in ['helpdesk', 'employee', 'manager']:
-#             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-#             self.runLdapadm('insert', 'access', self.obj_cn, 'user', user)
-#             self.verifyGroupContainsUser(self.obj_dn, user)
-# 
-#     def testInsertCanInsertMultipleUsers(self):
-#         users = ['helpdesk', 'employee', 'manager']
-#         for user in users:
-#             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-#         self.runLdapadm('insert', 'group', self.obj_cn, 'user',
-#                    'employee', 'manager', 'helpdesk')
-#         for user in users:
-#             self.verifyGroupContainsUser(self.obj_dn, user)
-# 
-#     def tearDown(self):
-#         # remove group object
-#         self.deleteGroup(self.obj_cn)
-# 
-# class LdapadmRemoveTests(LdapadmTest):
-# 
-#     def setUp(self):
-#         super(LdapadmRemoveTests, self).setUp()
-#         self.obj_cn = 'bazbars'
-#         self.obj_dn = self.createGroup(self.obj_cn)
-#         self.users = ['helpdesk', 'employee', 'manager']
-#         for u in self.users:
-#             dn = self.lom.get_single(self.conf['user']['base'],
-#                 "%s=%s" %(self.conf['user']['identifier'], u))[0]
-#             self.lom.add_attribute(self.conf['group']['base'],
-#                 self.obj_dn, 
-#                 'member',
-#                 dn)
-# 
-#     def testRemoveGroupCanRemoveSingleUser(self):
-#         for user in self.users:
-#             self.verifyGroupContainsUser(self.obj_dn, user)
-#             self.runLdapadm('remove', 'group', self.obj_cn, 'user', user)
-#             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-# 
-#     def testRemoveAccessCanRemoveSingleUser(self):
-#         for user in ['helpdesk', 'employee', 'manager']:
-#             self.verifyGroupContainsUser(self.obj_dn, user)
-#             self.runLdapadm('remove', 'access', self.obj_cn, 'user', user)
-#             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-# 
-#     def testRemoveCanRemoveMultipleUsers(self):
-#         users = ['helpdesk', 'employee', 'manager']
-#         for user in users:
-#             self.verifyGroupContainsUser(self.obj_dn, user)
-#         self.runLdapadm('remove', 'group', self.obj_cn, 'user',
-#                    'employee', 'manager', 'helpdesk')
-#         for user in users:
-#             self.verifyGroupDoesNotContainUser(self.obj_dn, user)
-# 
-#     def tearDown(self):
-#         # remove group object
-#         self.deleteGroup(self.obj_cn)
+class LdapadmRemoveTests(LdapadmTest):
+
+    def setUp(self):
+        super(LdapadmRemoveTests, self).setUp()
+        # insert every user into every group
+        for (group, user) in ((g, u) for g in self.group_list \
+                                     for u in self.user_list):
+            self.insertUserIntoGroup(group, user)
+
+    def testRemoveGroupCanRemoveSingleUser(self):
+        group = random.choice(self.group_list)
+        user = random.choice(self.user_list)
+        self.verifyGroupContainsUser(group, user)
+        self.LdapadmRemove(group, user)
+        self.verifyGroupDoesNotContainUser(group, user)
