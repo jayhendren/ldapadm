@@ -176,6 +176,9 @@ class LdapadmTest(unittest.TestCase):
                             self.getNewTestObjectAttributes(type)}})
         self.runLdapadm('-o', options, 'create', type, name)
 
+    def LdapadmDeleteObject(self, type, name):
+        self.runLdapadm('delete', type, name)
+
 class LdapadmBasicTests(LdapadmTest):
 
     def testLdapadmCalledWithoutArgumentsReturnsError(self):
@@ -236,6 +239,15 @@ class LdapadmCreateTests(LdapadmTest):
         self.verifyObjectDoesNotExistByName(object_type, name)
         self.LdapadmCreateObject(object_type, name)
         self.verifyObjectExistsByName(object_type, name)
+
+class LdapadmDeleteTests(LdapadmTest):
+
+    def testDeleteUser(self):
+        object_type = 'user'
+        for user in self.user_list:
+            self.verifyObjectExistsByName(object_type, user)
+            self.LdapadmDeleteObject(object_type, user)
+            self.verifyObjectDoesNotExistByName(object_type, user)
 
 # class LdapadmInsertTests(LdapadmTest):
 # 
