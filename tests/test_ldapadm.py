@@ -121,10 +121,15 @@ class LdapadmTest(unittest.TestCase):
     def getDN(self, type, name):
         return "cn=%s,%s" %(name, config[type]['base'])
 
+    def getNewTestObjectAttributes(self, type):
+        return {'objectClass': ['test%s' %type], 'testAttribute': 'test me'}
+
+    def getNewTestObjectModlist(self, type):
+        return ldap.modlist.addModlist(self.getNewTestObjectAttributes(type))
+
     def createObject(self, type, name):
         dn = self.getDN(type, name)
-        ldapobject.add_ext_s(dn, ldap.modlist.addModlist(
-            {'objectClass': ['test%s' %type], 'testAttribute': 'test me'}))
+        ldapobject.add_ext_s(dn, self.getNewTestObjectModlist(type))
 
     def deleteObject(self, type, name):
         dn = self.getDN(type, name)
@@ -165,6 +170,11 @@ class LdapadmTest(unittest.TestCase):
     def verifyObjectExistsByName(self, type, name):
         dn = self.getDN(type, name)
         self.verifyDoesExistByDN(dn)
+
+    def LdapadmCreateObject(self, type, name):
+        options = yaml.dump({type: {'schema': \
+                            self.getNewTestObjectAttributes(type)}})
+        self.runLdapadm('-o', options, 'create', type, name)
 
 class LdapadmBasicTests(LdapadmTest):
 
@@ -224,27 +234,9 @@ class LdapadmCreateTests(LdapadmTest):
         name = 'foobar'
         object_type = 'user'
         self.verifyObjectDoesNotExistByName(object_type, name)
-        self.createObject(object_type, name)
+        self.LdapadmCreateObject(object_type, name)
         self.verifyObjectExistsByName(object_type, name)
 
-#     def testCreateAndRemove(self):
-#         # Yes, I'm lazy...
-#         name = 'ldapadmtest'
-#         self.verifyDoesNotExist('%s=%s,%s' %(self.conf['user']['identifier'],
-#                                              name,
-#                                              self.conf['user']['base']))
-#         options = 'user: {schema: {cn: [yellow], sn:[blue], ' +\
-#                   'uidNumber: ["98765"], gidNumber: ["98765"],' +\
-#                   'homedirectory: ["/home/red"]}}'
-#         self.runLdapadm('-o', options, 'create', 'user', name)
-#         self.verifyDoesExist('%s=%s,%s' %(self.conf['user']['identifier'],
-#                                           name,
-#                                           self.conf['user']['base']))
-#         self.runLdapadm('delete', 'user', name)
-#         self.verifyDoesNotExist('%s=%s,%s' %(self.conf['user']['identifier'],
-#                                              name,
-#                                              self.conf['user']['base']))
-# 
 # class LdapadmInsertTests(LdapadmTest):
 # 
 #     def setUp(self):
