@@ -30,6 +30,7 @@ def setUpModule():
     ldapobject.add_ext_s(group_base, ldap.modlist.addModlist({}))
     config = {
         'uri': uri,
+        'base': base,
         'user': {
             'base': user_base,
             'identifier': 'cn',
@@ -138,12 +139,27 @@ class LdapadmTest(unittest.TestCase):
         user_dn = self.getDN('user', user)
         group_dn = self.getDN('group', group)
         group_object = self.getObjectByDN(group_dn)[1]
+        user_object = self.getObjectByDN(user_dn)[1]
+
+        # add user to members list
         new_group_object = copy.deepcopy(group_object)
         member_list = new_group_object.get('member', [])
         member_list.append(user_dn)
         new_group_object['member'] = member_list
         modlist = ldap.modlist.modifyModlist(group_object, new_group_object)
         ldapobject.modify_ext_s(group_dn, modlist)
+
+        # add group to memberOf list
+        new_user_object = copy.deepcopy(user_object)
+        member_of_list = new_user_object.get('memberOf', [])
+        member_of_list.append(group_dn)
+        new_user_object['memberOf'] = member_of_list
+        modlist = ldap.modlist.modifyModlist(user_object, new_user_object)
+        ldapobject.modify_ext_s(user_dn, modlist)
+
+    def getDnsFromOutput(self, output):
+        return list((r[0] for k, v in yaml.load(output[0]).items() \
+                          for r in v.get('results')))
 
     def verifyOutput(self, output, object, type, search_term):
         try:
@@ -181,6 +197,14 @@ class LdapadmTest(unittest.TestCase):
         group_object = self.getObjectByDN(group_dn)
         user_dn = self.getDN('user', user)
         self.assertIn(user_dn, group_object[1].get('member', []))
+
+    def verifyOutputContains(self, output, name, type):
+        dns = self.getDnsFromOutput(output)
+        self.assertIn(self.getDN(type, name), dns)
+
+    def verifyOutputDoesNotContain(self, output, name, type):
+        dns = self.getDnsFromOutput(output)
+        self.assertNotIn(self.getDN(type, name), dns)
 
     def LdapadmCreateObject(self, type, name):
         options = yaml.dump({type: {'schema': \
@@ -295,3 +319,17 @@ class LdapadmRemoveTests(LdapadmTest):
         self.verifyGroupContainsUser(group, user)
         self.LdapadmRemove(group, user)
         self.verifyGroupDoesNotContainUser(group, user)
+
+class LdapadmMemberTests(LdapadmTest):
+
+    def ldapadmMembers(self, group):
+        return self.runLdapadm('members', 'group', group)
+
+    def testMembers(self):
+        member, non_member = random.sample(self.user_list, 2)
+        group = random.choice(self.group_list)
+        self.insertUserIntoGroup(group, member)
+        self.verifyGroupContainsUser(group, member)
+        output = self.ldapadmMembers(group)
+        self.verifyOutputContains(output, member, 'user')
+        self.verifyOutputDoesNotContain(output, non_member, 'user')

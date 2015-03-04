@@ -108,7 +108,7 @@ writing, this tool is not yet complete and not all configuration items
 are implemented):
 
     uri:             # uri of the ldap server. required
-    base:            # base object of the directory tree. required?
+    base:            # base object of the directory tree. required
     options:         # dictionary of ldap options
     <type>:          # user-supplied type; configuration may define an
                      # arbitrary number of types. at least one is required
