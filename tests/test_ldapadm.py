@@ -333,3 +333,17 @@ class LdapadmMemberTests(LdapadmTest):
         output = self.ldapadmMembers(group)
         self.verifyOutputContains(output, member, 'user')
         self.verifyOutputDoesNotContain(output, non_member, 'user')
+
+class LdapadmMembershipTests(LdapadmTest):
+
+    def ldapadmMembership(self, user):
+        return self.runLdapadm('membership', 'user', user)
+
+    def testMembership(self):
+        group, non_group = random.sample(self.group_list, 2)
+        user = random.choice(self.user_list)
+        self.insertUserIntoGroup(group, user)
+        self.verifyGroupContainsUser(group, user)
+        output = self.ldapadmMembership(user)
+        self.verifyOutputContains(output, group, 'group')
+        self.verifyOutputDoesNotContain(output, non_group, 'group')
