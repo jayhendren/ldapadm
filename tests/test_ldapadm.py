@@ -55,6 +55,32 @@ def tearDownModule():
     server.stop()
     os.remove(conf_path)
 
+class LdapadmOutput():
+
+    def __init__(self, *args, **kwargs):
+        use_default_config = kwargs.get('use_default_config', True)
+    
+        if use_default_config:
+            args = ('-c', conf_path) + args
+    
+        cmd = [os.path.join(proj_root_dir, 'src/ldapadm.py')] + list(args)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        self.stdout, self.stderr = proc.communicate()
+        try:
+            self.output_object = yaml.load(self.stdout)
+        except yaml.scanner.ScannerError:
+            self.output_object = None
+        self.code = proc.returncode
+        self.success = (self.code == 0) and self.output_object and \
+            all([v['success'] for k, v in self.output_object.items()])
+
+    def containsObject(self, object):
+        dns = list((r[0] for k, v in self.output_object.items() \
+                         for r in v.get('results')))
+        dn = object[0]
+        return dn in dns
+
 class LdapadmTest(unittest.TestCase):
 
     def setUp(self):
@@ -70,48 +96,6 @@ class LdapadmTest(unittest.TestCase):
                 '(|(objectClass=testuser)(objectClass=testgroup))'):
             self.deleteObjectByDN(o[0])
 
-    def runLdapadm(self, *args, **kwargs):
-        # runLdapadm() returns tuple (stdout, stderr, exitcode)
-    
-        use_default_config = kwargs.get('use_default_config', True)
-    
-        if use_default_config:
-            args = ('-c', conf_path) + args
-    
-        cmd = [os.path.join(proj_root_dir, 'src/ldapadm.py')] + list(args)
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        result = proc.communicate()
-        result = result + (proc.returncode,)
-    
-        return result
-
-    def assertLdapadmSucceeds(self, *args, **kwargs):
-        stdout, stderr, code = self.runLdapadm(*args, **kwargs)
-        self.assertEqual(code, 0)
-        output_obj = yaml.load(stdout)
-        success = all([v['success'] for k, v in output_obj.items()])
-        self.assertTrue(success)
-
-    def assertLdapadmFails(self, *args, **kwargs):
-        stdout, stderr, code = self.runLdapadm(*args, **kwargs)
-        self.assertNotEqual(code, 0)
-        output_obj = yaml.load(stdout)
-        try:
-            failure = not all([v['success'] for k, v in output_obj.items()])
-        except AttributeError:
-            self.assertTrue(False, "Expected YAML output.  Instead received:" +
-                            "\nstdout:\n%s\n" %stdout +
-                            "stderr:\n%s\n" %stderr +
-                            "code:%s" %code)
-        self.assertTrue(failure)
-
-    def assertLdapadmFailsWithoutOutput(self, *args, **kwargs):
-        stdout, stderr, code = self.runLdapadm(*args, **kwargs)
-        self.assertNotEqual(code, 0)
-        output_obj = yaml.load(stdout)
-        self.assertIsNone(output_obj)
-
     def getDN(self, type, name):
         return "cn=%s,%s" %(name, config[type]['base'])
 
@@ -123,6 +107,9 @@ class LdapadmTest(unittest.TestCase):
 
     def getObjectByDN(self, dn):
         return ldapobject.search_ext_s(dn, ldap.SCOPE_BASE)[0]
+
+    def getObjectByName(self, type, name):
+        return self.getObjectByDN(self.getDN(type, name))
 
     def createObject(self, type, name):
         dn = self.getDN(type, name)
@@ -156,10 +143,6 @@ class LdapadmTest(unittest.TestCase):
         new_user_object['memberOf'] = member_of_list
         modlist = ldap.modlist.modifyModlist(user_object, new_user_object)
         ldapobject.modify_ext_s(user_dn, modlist)
-
-    def getDnsFromOutput(self, output):
-        return list((r[0] for k, v in yaml.load(output[0]).items() \
-                          for r in v.get('results')))
 
     def verifyOutput(self, output, object, type, search_term):
         try:
@@ -198,79 +181,64 @@ class LdapadmTest(unittest.TestCase):
         user_dn = self.getDN('user', user)
         self.assertIn(user_dn, group_object[1].get('member', []))
 
-    def verifyOutputContains(self, output, name, type):
-        dns = self.getDnsFromOutput(output)
-        self.assertIn(self.getDN(type, name), dns)
+    def verifyOutputContains(self, output, type, name):
+        object = self.getObjectByName(type, name)
+        self.assertTrue(output.containsObject(object))
 
-    def verifyOutputDoesNotContain(self, output, name, type):
-        dns = self.getDnsFromOutput(output)
-        self.assertNotIn(self.getDN(type, name), dns)
+    def verifyOutputDoesNotContain(self, output, type, name):
+        object = self.getObjectByName(type, name)
+        self.assertFalse(output.containsObject(object))
 
-    def LdapadmCreateObject(self, type, name):
+    def ldapadmGet(self, type, name):
+        return LdapadmOutput('get', type, name)
+
+    def ldapadmSearch(self, type, search_term):
+        return LdapadmOutput('search', type, search_term)
+
+    def ldapadmCreateObject(self, type, name):
         options = yaml.dump({type: {'schema': \
                             self.getNewTestObjectAttributes(type)}})
-        self.runLdapadm('-o', options, 'create', type, name)
+        return LdapadmOutput('-o', options, 'create', type, name)
 
-    def LdapadmDeleteObject(self, type, name):
-        self.runLdapadm('delete', type, name)
+    def ldapadmDeleteObject(self, type, name):
+        return LdapadmOutput('delete', type, name)
 
-    def LdapadmInsert(self, group, user):
-        self.runLdapadm('insert', 'group', group, 'user', user)
+    def ldapadmInsert(self, group, user):
+        return LdapadmOutput('insert', 'group', group, 'user', user)
 
-    def LdapadmRemove(self, group, user):
-        self.runLdapadm('remove', 'group', group, 'user', user)
+    def ldapadmRemove(self, group, user):
+        return LdapadmOutput('remove', 'group', group, 'user', user)
 
 class LdapadmBasicTests(LdapadmTest):
 
     def testLdapadmCalledWithoutArgumentsReturnsError(self):
-        self.assertLdapadmFailsWithoutOutput(use_default_config=False)
+        self.assertFalse(LdapadmOutput(use_default_config=False).success)
 
     def testHelpSwitchesExitCodeZeroAndProduceOutput(self):
-        self.assertRegexpMatches(self.runLdapadm("-h")[0], r'usage:')
-        self.assertRegexpMatches(self.runLdapadm("--help")[0], r'usage:')
+        self.assertRegexpMatches(LdapadmOutput("-h").stdout, r'usage:')
+        self.assertRegexpMatches(LdapadmOutput("--help").stdout, r'usage:')
 
 class LdapadmGetTests(LdapadmTest):
 
-    def getOutput(self, type, search_term):
-        return self.runLdapadm('get', type, search_term)
+    def testSingleGetUser(self):
+        user1, user2 = random.sample(self.user_list, 2)
+        output = self.ldapadmGet('user', user1)
+        self.verifyOutputContains(output, 'user', user1)
+        self.verifyOutputDoesNotContain(output, 'user', user2)
 
-    def getObject(self, type, search_term):
-        dn = self.getDN(type, search_term)
-        return ldapobject.search_ext_s(dn, ldap.SCOPE_BASE)[0]
-
-    def verifyCanGet(self, type, search_term):
-        output = self.getOutput(type, search_term)
-        object = self.getObject(type, search_term)
-        self.verifyOutput(output, object, type, search_term)
-
-    def verifyCannotGet(self, type, search_term):
-        self.assertLdapadmFails('get', type, search_term)
-
-    def testGetWithBadArgumentsReturnsError(self):
-        self.assertLdapadmFailsWithoutOutput('get')
-        self.assertLdapadmFailsWithoutOutput('get', 'bogus')
-
-    def testSimpleGetUser(self):
-
-        for user in ('bogus', 'totallynotauser'):
-            self.verifyCannotGet('user', user)
-        for user in self.user_list:
-            self.verifyCanGet('user', user)
-        for group in ('bogus', 'totallynotagroup'):
-            self.verifyCannotGet('group', group)
-        for group in self.group_list:
-            self.verifyCanGet('group', group)
-
-    def testMultipleGetUser(self):
-        pass
+    def testSingleGetGroup(self):
+        group1, group2 = random.sample(self.group_list, 2)
+        output = self.ldapadmGet('group', group1)
+        self.verifyOutputContains(output, 'group', group1)
+        self.verifyOutputDoesNotContain(output, 'group', group2)
 
 class LdapadmSearchTests(LdapadmTest):
 
     def testSearchUser(self):
         search_term = 'test me'
-        output = yaml.load(self.runLdapadm('search', 'user', search_term)[0])
-        cns = [r[1]['cn'][0] for r in output[search_term]['results']]
-        self.assertItemsEqual(cns, self.user_list)
+        output = self.ldapadmSearch('user', search_term)
+        for user in self.user_list:
+            self.verifyOutputContains(output, 'user', user)
 
 class LdapadmCreateTests(LdapadmTest):
 
@@ -278,30 +246,30 @@ class LdapadmCreateTests(LdapadmTest):
         name = 'foobar'
         object_type = 'user'
         self.verifyObjectDoesNotExistByName(object_type, name)
-        self.LdapadmCreateObject(object_type, name)
+        self.ldapadmCreateObject(object_type, name)
         self.verifyObjectExistsByName(object_type, name)
 
 class LdapadmDeleteTests(LdapadmTest):
 
     def testDeleteUser(self):
         object_type = 'user'
-        for user in self.user_list:
-            self.verifyObjectExistsByName(object_type, user)
-            self.LdapadmDeleteObject(object_type, user)
-            self.verifyObjectDoesNotExistByName(object_type, user)
+        user = random.choice(self.user_list)
+        self.verifyObjectExistsByName(object_type, user)
+        self.ldapadmDeleteObject(object_type, user)
+        self.verifyObjectDoesNotExistByName(object_type, user)
 
 class LdapadmInsertTests(LdapadmTest):
 
     def testInsertWithBadArgumentsReturnsError(self):
-        self.assertLdapadmFailsWithoutOutput('insert')
-        self.assertLdapadmFailsWithoutOutput('insert', 'boguscommand')
-        self.assertLdapadmFailsWithoutOutput('insert', 'group', 'bogusgroup')
+        self.assertFalse(LdapadmOutput('insert').success)
+        self.assertFalse(LdapadmOutput('insert', 'boguscommand').success)
+        self.assertFalse(LdapadmOutput('insert', 'group', 'bogustype').success)
 
     def testInsertUserIntoGroup(self):
         group = random.choice(self.group_list)
         user = random.choice(self.user_list)
         self.verifyGroupDoesNotContainUser(group, user)
-        self.LdapadmInsert(group, user)
+        self.ldapadmInsert(group, user)
         self.verifyGroupContainsUser(group, user)
 
 class LdapadmRemoveTests(LdapadmTest):
@@ -317,13 +285,13 @@ class LdapadmRemoveTests(LdapadmTest):
         group = random.choice(self.group_list)
         user = random.choice(self.user_list)
         self.verifyGroupContainsUser(group, user)
-        self.LdapadmRemove(group, user)
+        self.ldapadmRemove(group, user)
         self.verifyGroupDoesNotContainUser(group, user)
 
 class LdapadmMemberTests(LdapadmTest):
 
     def ldapadmMembers(self, group):
-        return self.runLdapadm('members', 'group', group)
+        return LdapadmOutput('members', 'group', group)
 
     def testMembers(self):
         member, non_member = random.sample(self.user_list, 2)
@@ -331,13 +299,13 @@ class LdapadmMemberTests(LdapadmTest):
         self.insertUserIntoGroup(group, member)
         self.verifyGroupContainsUser(group, member)
         output = self.ldapadmMembers(group)
-        self.verifyOutputContains(output, member, 'user')
-        self.verifyOutputDoesNotContain(output, non_member, 'user')
+        self.verifyOutputContains(output, 'user', member)
+        self.verifyOutputDoesNotContain(output, 'user', non_member)
 
 class LdapadmMembershipTests(LdapadmTest):
 
     def ldapadmMembership(self, user):
-        return self.runLdapadm('membership', 'user', user)
+        return LdapadmOutput('membership', 'user', user)
 
     def testMembership(self):
         group, non_group = random.sample(self.group_list, 2)
@@ -345,5 +313,5 @@ class LdapadmMembershipTests(LdapadmTest):
         self.insertUserIntoGroup(group, user)
         self.verifyGroupContainsUser(group, user)
         output = self.ldapadmMembership(user)
-        self.verifyOutputContains(output, group, 'group')
-        self.verifyOutputDoesNotContain(output, non_group, 'group')
+        self.verifyOutputContains(output, 'group', group)
+        self.verifyOutputDoesNotContain(output, 'group', non_group)
