@@ -37,31 +37,37 @@ def render_pretty_output(output):
     bright_white   = '\x1b[37;1m'
     reset_color    = '\x1b[39;49m'
 
+    def print_header(value):
+        print white + query + reset_color + ':'
+
+    def print_divider():
+        print '-' * 40
+
+    def print_error(message):
+        print red + message + reset_color
+
+    def print_single_attribute(key, values_list):
+        attribute = cyan + "%-18s" % key + reset_color + ': ' 
+        # value_template = magenta + '%s' + reset_color + '\n'
+        if not values_list:
+            printable_value = magenta + 'None' + reset_color
+            print attribute + printable_value
+        else:
+            for value in values_list:
+                printable_value = yellow + value + reset_color
+                print attribute + printable_value
+
     output_str_list = []
     for query, result in output.items():
-        header = white + query + reset_color + ':' + '\n'
-        results_str = header
+        print_header(query)
         if not result['success']:
-            results_str += red + result['message'] + reset_color + '\n'
+            print_error(result['message'])
         else:
             for r in result.get('results', {}):
-                divider = '-' * 40 + '\n'
-                entry = ''
+                print_divider()
                 for k, v in r[1].items():
-                    attribute = cyan + "%-18s" % k + reset_color + ': ' 
-                    # value_template = magenta + '%s' + reset_color + '\n'
-                    if v is None:
-                        entry += attribute + magenta + 'None' + \
-                                 reset_color + '\n'
-                    else:
-                        for i in v:
-                            entry += attribute + yellow + i + \
-                                     reset_color + '\n'
-                results_str += divider + entry + divider
-        output_str_list.append(results_str)
-    output_str = '\n'.join(output_str_list)
-
-    print output_str
+                    print_single_attribute(k, v)
+                print_divider()
 
 def render_yaml_output(output):
     print yaml.dump(output)
