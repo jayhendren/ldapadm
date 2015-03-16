@@ -12,7 +12,8 @@ deleting objects, and adding and removing objects from group membership.
 
 For development purposes only:
 
-* [mock](http://mock.readthedocs.org/en/latest/)
+* [python-ldap-test](https://github.com/zoldar/python-ldap-test/) (A Python
+  wrapper around the UnboundID in-memory LDAP server.  Requires Java.)
 * (optional) [watchdog](http://pythonhosted.org/watchdog/)
 
 ## Usage
@@ -21,21 +22,25 @@ ldapadm commands are typically run with the following syntax:
 
     $ ldapadm --flags command object_type object_name
 
-where:
+The following commands are available:
 
-* `command` is one of:
+* **`get`** - to fetch a single object and view its attributes
+* **`search`** - to run a search against the LDAP server and view the
+  attributes of all returned objects
+* **`create`** - to create a new object using a user-supplied schema
+* **`delete`** - to delete an existing object
+* **`insert`** - to insert an object into group membership
+* **`remove`** - to remove an object from group membership
 
-  * **`get`** - to fetch a single object and view its attributes
-  * **`search`** - to run a search against the LDAP server and view the
-    attributes of all returned objects
-  * **`create`** - to create a new object using a user-supplied schema
-  * **`delete`** - to delete an existing object
-  * **`insert`** - to insert an object into group membership
-  * **`remove`** - to remove an object from group membership
+The user must supply at least one object type in configuration.  For most
+LDAP servers/schema, the user will likely wish to use types called "user",
+"group", "computer", and so on.  The `object_type` argument refers to
+one of these user-supplied types.
 
-* `object_type` is one of the object types supplied by the user via
-  configuration
-* `object_name` is the name of the object being acted upon.
+`object_name` is the name of the object being acted upon.  The
+user-supplied configuration will determine how to map a combination
+of name and type to an object, though (hopefully) sane defaults are
+available that should work for most LDAP schema.
 
 To see all available flags and options, run `ldapadm -h` or `ldapadm
 --help`.  For more specific help on a particular command, run `ldapadm
@@ -62,11 +67,11 @@ commands (in pseudo-YAML format):
       ...
     ...
 
-* Each key in the top-level object is one of the arguments to the command.
-  For instance, in the command `ldapadm get user alice bob carol`, the
-  keys will be `alice`, `bob`, and `carol`.  For the command `ldapadm
-  insert group hackers user dave edgar felicia`, the keys will be `dave`,
-  `edgar`, and `felicia`.
+* Each key in the top-level object is one of the name or query arguments
+  to the command.  For instance, in the command `ldapadm get user alice bob
+  carol`, the keys will be `alice`, `bob`, and `carol`.  For the command
+  `ldapadm insert group hackers user dave edgar felicia`, the keys will be
+  `dave`, `edgar`, and `felicia`.
 * The value for each key is another object.  This object will always
   have the key `success`, which is a boolean (`true` or `false`) value
   indicating whether the requested operation completed successfully.
