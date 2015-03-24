@@ -136,10 +136,10 @@ configuration options:
 
 * `uri`: A string containing the URI of the LDAP server.  May contain a
   scheme identifier (e.g., `ldap://` or `ldaps://`) and a port (e.g. `:389`,
-  `636`). **Required**
+  `636`). **Required**. **Default: none**
 
 * `base`: A string containing the Distinguished Name (DN) of the base
-  object for all LDAP queries.
+  object for all LDAP queries.  **Default: none**
 
 * `options`: A mapping of options and their values that are passed
   directly on to the python-ldap library.  For instance:
@@ -157,16 +157,23 @@ configuration options:
   documentation](http://www.python-ldap.org/doc/html/ldap.html#options).
   Note that all options start with `OPT_`.
 
-* `<type>`: This is the name of the user-supplied object type.  You will
-  probably want to use a type name that clearly references a specific type
-  of object on the LDAP server.  This will also be the value that you pass
-  as the "type" argument to the various ldapadm commands.  For instance,
-  if you wish to be able to run the commands `ldapadm get user ...` and
-  `ldapadm get group ...`, you must define the types `user` and `group`
-  in your configuration.  For instance:
+  **Default: none**
 
+* `<type>`: This is the name of the user-supplied object type.  At least one
+  type block is **required**.  You will probably want to use a type name that
+  clearly references a specific type of object on the LDAP server.  This will
+  also be the value that you pass as the "type" argument to the various ldapadm
+  commands.  For instance, if you wish to be able to run the commands `ldapadm
+  get user ...` and `ldapadm get group ...`, you must define the types `user`
+  and `group` in your configuration.  To give a concrete configuration file
+  example:
+
+      uri: "ldap://my.domain"
       user:
         base: "ou=people,dc=my,dc=domain"
+        ...
+      group:
+        base: "ou=groups,dc=my,dc=domain"
         ...
 
   A type definition may include the following values:
