@@ -256,6 +256,7 @@ class LDAPAdminTool():
         dn = self._generate_dn(item_type, name)
         attrs = self._config_get(item_type, 'schema')
         self._lom.create_object(dn, attrs)
+        return self._get(name, item_type)
 
     def _delete(self, name, item_type):
         dn = self._get_dn(item_type, name)

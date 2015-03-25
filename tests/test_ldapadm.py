@@ -243,8 +243,9 @@ class LdapadmCreateTests(LdapadmTest):
         name = 'foobar'
         object_type = 'user'
         self.verifyObjectDoesNotExistByName(object_type, name)
-        self.ldapadmCreateObject(object_type, name)
+        output = self.ldapadmCreateObject(object_type, name)
         self.verifyObjectExistsByName(object_type, name)
+        self.verifyOutputContains(output, object_type, name)
 
 class LdapadmDeleteTests(LdapadmTest):
 
