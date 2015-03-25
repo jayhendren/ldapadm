@@ -144,15 +144,6 @@ class LdapadmTest(unittest.TestCase):
         modlist = ldap.modlist.modifyModlist(user_object, new_user_object)
         ldapobject.modify_ext_s(user_dn, modlist)
 
-    def verifyOutput(self, output, object, type, search_term):
-        try:
-            output_obj = yaml.load(output[0])[search_term]['results'][0][1]
-            filtered_obj = {k:object[1].get(k) \
-                            for k in config[type]['display']}
-            self.assertEqual(output_obj, filtered_obj)
-        except IndexError:
-            self.assertFalse(True, "unexpected output:\n" + output[0])
-
     def verifyDoesExistByDN(self, dn):
         self.assertEqual(self.getObjectByDN(dn)[0], dn)
 
@@ -208,6 +199,12 @@ class LdapadmTest(unittest.TestCase):
 
     def ldapadmRemove(self, group, user):
         return LdapadmOutput('remove', 'group', group, 'user', user)
+
+    def ldapadmMembers(self, group):
+        return LdapadmOutput('members', 'group', group)
+
+    def ldapadmMembership(self, user):
+        return LdapadmOutput('membership', 'user', user)
 
 class LdapadmBasicTests(LdapadmTest):
 
@@ -290,9 +287,6 @@ class LdapadmRemoveTests(LdapadmTest):
 
 class LdapadmMemberTests(LdapadmTest):
 
-    def ldapadmMembers(self, group):
-        return LdapadmOutput('members', 'group', group)
-
     def testMembers(self):
         member, non_member = random.sample(self.user_list, 2)
         group = random.choice(self.group_list)
@@ -303,9 +297,6 @@ class LdapadmMemberTests(LdapadmTest):
         self.verifyOutputDoesNotContain(output, 'user', non_member)
 
 class LdapadmMembershipTests(LdapadmTest):
-
-    def ldapadmMembership(self, user):
-        return LdapadmOutput('membership', 'user', user)
 
     def testMembership(self):
         group, non_group = random.sample(self.group_list, 2)
