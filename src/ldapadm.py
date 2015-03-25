@@ -57,17 +57,23 @@ def render_pretty_output(output):
                 printable_value = yellow + value + reset_color
                 print attribute + printable_value
 
-    output_str_list = []
-    for query, result in output.items():
-        print_header(query)
+    def print_object(obj):
+        print_divider()
+        for k, v in obj[1].items():
+            print_single_attribute(k, v)
+        print_divider()
+
+    def print_result(result):
         if not result['success']:
             print_error(result['message'])
         else:
             for r in result.get('results', {}):
-                print_divider()
-                for k, v in r[1].items():
-                    print_single_attribute(k, v)
-                print_divider()
+                print_object(r)
+
+    output_str_list = []
+    for query, result in output.items():
+        print_header(query)
+        print_result(result)
 
 def render_yaml_output(output):
     print yaml.dump(output)
