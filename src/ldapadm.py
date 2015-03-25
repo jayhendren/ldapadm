@@ -48,7 +48,6 @@ def render_pretty_output(output):
 
     def print_single_attribute(key, values_list):
         attribute = cyan + "%-18s" % key + reset_color + ': ' 
-        # value_template = magenta + '%s' + reset_color + '\n'
         if not values_list:
             printable_value = magenta + 'None' + reset_color
             print attribute + printable_value
