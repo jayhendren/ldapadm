@@ -46,6 +46,9 @@ def render_pretty_output(output):
     def print_error(message):
         print red + message + reset_color
 
+    def print_success():
+        print green + "Operation successful" + reset_color
+
     def print_single_attribute(key, values_list):
         attribute = cyan + "%-18s" % key + reset_color + ': ' 
         if not values_list:
@@ -65,8 +68,10 @@ def render_pretty_output(output):
     def print_result(result):
         if not result['success']:
             print_error(result['message'])
+        elif not result['results']:
+            print_success()
         else:
-            for r in result.get('results', {}):
+            for r in result['results']:
                 print_object(r)
 
     output_str_list = []
