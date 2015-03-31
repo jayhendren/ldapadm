@@ -47,7 +47,7 @@ def render_pretty_output(output):
         print red + message + reset_color
 
     def print_success():
-        print green + "Operation successful" + reset_color
+        print green + "Operation successful; no results" + reset_color
 
     def print_single_attribute(key, values_list):
         attribute = cyan + "%-18s" % key + reset_color + ': ' 
