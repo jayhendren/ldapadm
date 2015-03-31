@@ -219,7 +219,8 @@ class LDAPAdminTool():
 
     def _add_missing_attributes(self, object, item_type):
         for attr in self._config_get(item_type, 'display', default=[]):
-            if object[1].get(attr) is None:
+            # need to perform a case-insensitive match against attributes
+            if attr.lower() not in map(lambda x: x.lower(), object[1].keys()):
                 object[1][attr] = None
 
     def _get_dn(self, item_type, name):
